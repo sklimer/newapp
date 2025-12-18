@@ -1,0 +1,7 @@
+# Alembic Migrations
+
+This directory contains database migration scripts for the Telegram restaurant mini app.
+
+## Usage
+- To run migrations: `alembic upgrade head`
+- To create a new migration: `alembic revision --autogenerate -m "Description of changes"`
