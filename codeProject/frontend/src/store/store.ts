@@ -1,12 +1,14 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from '@reduxjs/toolkit';
+import cartReducer from './cartSlice';
 
 // Define initial states
 const initialState = {};
 
 // Create reducers
 const rootReducer = combineReducers({
-  // Add reducers here as needed
+  cart: cartReducer,
+  // Add other reducers here as needed
 });
 
 // Configure store

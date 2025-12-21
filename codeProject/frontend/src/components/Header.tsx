@@ -1,7 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectCartItemCount } from '../store/cartSlice';
 
 const Header: React.FC = () => {
+  const cartItemCount = useSelector(selectCartItemCount);
+
   return (
     <header className="header">
       <div className="container">
@@ -11,7 +15,13 @@ const Header: React.FC = () => {
         <nav>
           <ul>
             <li><Link to="/">Menu</Link></li>
-            <li><Link to="/cart">Cart</Link></li>
+            <li>
+              <Link to="/cart">Cart 
+                <span className="cart-count">
+                  {cartItemCount > 0 && `(${cartItemCount})`}
+                </span>
+              </Link>
+            </li>
             <li><Link to="/profile">Profile</Link></li>
           </ul>
         </nav>

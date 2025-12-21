@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
+import { selectCartItems, updateQuantity, removeItem } from '../store/cartSlice';
 
 interface CartItem {
   id: number;
@@ -9,10 +11,8 @@ interface CartItem {
 }
 
 const Cart: React.FC = () => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    { id: 1, name: 'Margherita Pizza', price: 12.99, quantity: 1 },
-    { id: 2, name: 'Caesar Salad', price: 8.99, quantity: 2 }
-  ]);
+  const cartItems = useSelector(selectCartItems);
+  const dispatch = useDispatch();
   
   const [deliveryOption, setDeliveryOption] = useState<'delivery' | 'pickup'>('delivery');
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
@@ -23,16 +23,16 @@ const Cart: React.FC = () => {
   const bonusDiscount = Math.min(bonusAmount, subtotal); // Bonus can't exceed subtotal
   const total = subtotal + deliveryFee - bonusDiscount;
 
-  const updateQuantity = (id: number, newQuantity: number) => {
+  const handleUpdateQuantity = (id: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      setCartItems(cartItems.filter(item => item.id !== id));
+      dispatch(removeItem(id));
     } else {
-      setCartItems(
-        cartItems.map(item =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        )
-      );
+      dispatch(updateQuantity({ id, quantity: newQuantity }));
     }
+  };
+
+  const handleRemoveItem = (id: number) => {
+    dispatch(removeItem(id));
   };
 
   return (
@@ -46,13 +46,14 @@ const Cart: React.FC = () => {
             </div>
             <div className="quantity-controls">
               <button 
-                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
                 disabled={item.quantity <= 1}
               >
                 -
               </button>
               <span>{item.quantity}</span>
-              <button onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+              <button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}>+</button>
+              <button className="remove-item-btn" onClick={() => handleRemoveItem(item.id)}>Remove</button>
             </div>
             <div className="item-total">
               ${(item.price * item.quantity).toFixed(2)}

@@ -58,6 +58,16 @@ body {
   color: #e74c3c;
 }
 
+.cart-count {
+  background-color: #e74c3c;
+  color: white;
+  border-radius: 50%;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.7rem;
+  margin-left: 0.3rem;
+  vertical-align: middle;
+}
+
 /* Page Styles */
 .home-page,
 .cart-page,
@@ -168,6 +178,21 @@ body {
   background-color: #fff;
   cursor: pointer;
   border-radius: 4px;
+}
+
+.quantity-controls .remove-item-btn {
+  width: auto;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.quantity-controls .remove-item-btn:hover {
+  background-color: #c0392b;
 }
 
 .quantity-controls button:disabled {
