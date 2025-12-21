@@ -36,11 +36,10 @@ class Settings(BaseSettings):
     
     # CORS settings
     ALLOWED_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://localhost:5173", 
-        "https://your-frontend.vercel.app",
         "https://web.telegram.org",
-        "https://t.me"
+        "https://t.me",
+        "https://www.t.me",
+        "https://telegram.org"
     ]
 
     class Config:

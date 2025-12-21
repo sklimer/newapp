@@ -9,13 +9,21 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor to add auth token if available
+// Request interceptor to add auth token if available and Telegram init data if in Telegram
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Check if we're running in Telegram Web App
+    // @ts-ignore - Telegram Web App object
+    if (window.Telegram?.WebApp?.initData) {
+      // @ts-ignore
+      config.headers['x-telegram-web-app-init-data'] = window.Telegram.WebApp.initData;
+    }
+    
     return config;
   },
   (error) => {
@@ -33,6 +41,9 @@ apiClient.interceptors.response.use(
       // Token might be expired, clear it and redirect to login
       localStorage.removeItem('access_token');
       window.location.href = '/login';
+    } else if (error.response?.status === 400 && error.response?.data?.detail?.includes('Telegram')) {
+      // Handle Telegram-specific errors
+      console.error('Telegram authentication error:', error.response.data.detail);
     }
     return Promise.reject(error);
   }
