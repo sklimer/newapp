@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.api import api_router
 from .core.config import settings
 from .core.database import database
+from .core.middleware import TelegramWebAppMiddleware
 import uvicorn
 
 app = FastAPI(
@@ -10,6 +11,9 @@ app = FastAPI(
     description="Backend API for Telegram mini app with payment integration for restaurants",
     version="1.0.0"
 )
+
+# Add Telegram Web App middleware first
+app.add_middleware(TelegramWebAppMiddleware)
 
 # Add CORS middleware
 app.add_middleware(

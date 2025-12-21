@@ -1,0 +1,81 @@
+from datetime import datetime, timedelta
+from typing import Optional
+import jwt
+from fastapi import Depends, HTTPException, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from .config import settings
+from .telegram import validate_telegram_init_data, get_telegram_user_data, is_running_in_telegram_web_app
+
+
+security = HTTPBearer()
+
+
+def verify_token(token: str) -> dict:
+    """Verify JWT token and return payload"""
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current user from JWT token"""
+    token = credentials.credentials
+    payload = verify_token(token)
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    return user_id
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Create JWT access token"""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+
+def require_telegram_auth():
+    """
+    Dependency to ensure requests come from Telegram and validate init data
+    """
+    async def validate_telegram_request(request: Request):
+        # Check if request is coming from Telegram Web App
+        if not is_running_in_telegram_web_app(request):
+            raise HTTPException(status_code=400, detail="Request must come from Telegram Web App")
+        
+        # Get init data from header or query parameter
+        init_data = request.headers.get("x-telegram-web-app-init-data")
+        if not init_data:
+            # Try to get from form data or query parameters if not in header
+            init_data = request.query_params.get(" initData")
+            if not init_data:
+                raise HTTPException(status_code=400, detail="Missing Telegram init data")
+        
+        # Validate the init data
+        validate_telegram_init_data(init_data)
+        
+        # Return validated user data
+        return get_telegram_user_data(init_data)
+    
+    return validate_telegram_request
+
+
+def require_telegram_web_app():
+    """
+    Dependency to ensure requests only come from Telegram Web App
+    """
+    async def check_telegram_environment(request: Request):
+        if not is_running_in_telegram_web_app(request):
+            raise HTTPException(status_code=400, detail="This endpoint is only accessible from Telegram Web App")
+        return True
+    
+    return check_telegram_environment

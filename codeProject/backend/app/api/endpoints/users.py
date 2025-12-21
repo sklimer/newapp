@@ -1,37 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-import hashlib
-import hmac
-import time
 
 from app.core.database import get_db
-from app.core.config import settings
+from app.core.security import require_telegram_auth, require_telegram_web_app
 from app.schemas.users import User, UserCreate, UserUpdate
 from app.models.users import User as UserModel
 from app.schemas.orders import OrderSchema
 router = APIRouter()
-
-
-def verify_telegram_auth(auth_data: dict):
-    """Verify Telegram authentication data"""
-    # Create a string for data check
-    data_check_arr = []
-    for key, value in auth_data.items():
-        if key != 'hash':
-            data_check_arr.append(f"{key}={value}")
-    
-    data_check_arr.sort()
-    data_check_string = '\n'.join(data_check_arr)
-    
-    # Create secret key
-    secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
-    
-    # Create hash
-    hash_calculated = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
-    
-    # Compare hashes
-    return hmac.compare_digest(hash_calculated, auth_data['hash'])
 
 
 @router.get("/", response_model=List[User])
@@ -151,27 +127,26 @@ async def delete_user(
 
 @router.post("/telegram-auth")
 async def telegram_auth(
-    auth_data: dict,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_data: dict = Depends(require_telegram_auth())
 ):
     """Authenticate user via Telegram"""
-    # Verify the authentication data
-    if not verify_telegram_auth(auth_data):
-        raise HTTPException(status_code=400, detail="Invalid authentication data")
+    # At this point, the user_data has already been validated through the dependency
     
     # Check if user already exists
     result = await db.execute(
         UserModel.__table__.select()
-        .where(UserModel.telegram_id == str(auth_data['id']))
+        .where(UserModel.telegram_id == str(user_data['id']))
     )
     user = result.fetchone()
     
     if user:
         # Update user data if changed
         update_data = {
-            'first_name': auth_data.get('first_name'),
-            'last_name': auth_data.get('last_name'),
-            'username': auth_data.get('username'),
+            'first_name': user_data.get('first_name'),
+            'last_name': user_data.get('last_name'),
+            'username': user_data.get('username'),
         }
         await db.execute(
             UserModel.__table__.update()
@@ -182,15 +157,15 @@ async def telegram_auth(
         return User.from_orm(user)
     else:
         # Create new user
-        user_data = {
-            'telegram_id': str(auth_data['id']),
-            'first_name': auth_data.get('first_name'),
-            'last_name': auth_data.get('last_name'),
-            'username': auth_data.get('username'),
-            'referral_code': f"REF{str(auth_data['id'])[-6:].upper()}"  # Generate referral code
+        user_create_data = {
+            'telegram_id': str(user_data['id']),
+            'first_name': user_data.get('first_name'),
+            'last_name': user_data.get('last_name'),
+            'username': user_data.get('username'),
+            'referral_code': f"REF{str(user_data['id'])[-6:].upper()}"  # Generate referral code
         }
         
-        db_user = UserModel(**user_data)
+        db_user = UserModel(**user_create_data)
         db.add(db_user)
         await db.commit()
         await db.refresh(db_user)
