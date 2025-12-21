@@ -144,3 +144,31 @@ ssh -p 2222 -R dev:80:localhost:5173 -o ServerAliveInterval=30 172.24.96.1
     │   └── store/        # Хранилище Zustand
     └── package.json
 ```
+
+# 1. Убедиться, что master актуален
+```bash
+git checkout master
+git pull origin master
+```
+# 2. Получить ветку с обновлениями
+```bash
+git fetch origin qwen-code-38dd85d5-c58e-45aa-a3f7-138abfb3d945
+```
+# 3. Создать локальную копию ветки
+```bash
+git checkout -b updates-38dd85d5 origin/qwen-code-38dd85d5-c58e-45aa-a3f7-138abfb3d945
+```
+# 4. Посмотреть что нового
+```bash
+git log --oneline -5
+git show --stat
+```
+# 5. Вернуться в master и объединить
+```bash
+git checkout master
+git merge updates-38dd85d5 --no-ff -m "Merge updates from qwen-code-38dd85d5"
+```
+# 6. Запушить
+```bash
+git push origin master
+```

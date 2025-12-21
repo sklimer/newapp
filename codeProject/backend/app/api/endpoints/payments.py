@@ -8,6 +8,7 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.core.config import settings
+from app.core.security import require_telegram_auth, require_telegram_web_app
 from app.schemas.payments import Payment, PaymentCreate, PaymentUpdate, CreatePaymentRequest, PaymentResponse
 from app.models.payments import Payment as PaymentModel
 from app.models.orders import Order as OrderModel
@@ -21,11 +22,13 @@ Configuration.configure(settings.YOOKASSA_SHOP_ID, settings.YOOKASSA_API_KEY)
 
 @router.get("/", response_model=List[Payment])
 async def get_payments(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
     user_id: int = None,
-    order_id: int = None
+    order_id: int = None,
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Get all payments with optional filters"""
     query = PaymentModel.__table__.select()
@@ -45,7 +48,9 @@ async def get_payments(
 @router.get("/{payment_id}", response_model=Payment)
 async def get_payment(
     payment_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Get a specific payment by ID"""
     result = await db.execute(
@@ -61,7 +66,9 @@ async def get_payment(
 @router.post("/", response_model=Payment)
 async def create_payment(
     payment: PaymentCreate,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_data: dict = Depends(require_telegram_auth())
 ):
     """Create a new payment"""
     # Validate order exists
@@ -82,6 +89,10 @@ async def create_payment(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    # Verify that the payment is being created by the same user as in Telegram
+    if str(user.telegram_id) != str(user_data['id']):
+        raise HTTPException(status_code=403, detail="Unauthorized to create payment for this user")
+    
     # If payment method is bonus, verify user has enough bonus balance
     if payment.payment_method == "BONUS":
         if user.bonus_balance < payment.amount:
@@ -98,7 +109,9 @@ async def create_payment(
 async def update_payment(
     payment_id: int,
     payment_update: PaymentUpdate,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Update a payment"""
     result = await db.execute(
@@ -128,7 +141,9 @@ async def update_payment(
 @router.post("/create-yookassa-payment")
 async def create_yookassa_payment(
     request_data: CreatePaymentRequest,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Create a YooKassa payment"""
     # Validate order exists
@@ -256,9 +271,23 @@ async def process_bonus_payment(
     order_id: int,
     user_id: int,
     amount: float,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_data: dict = Depends(require_telegram_auth())
 ):
     """Process a bonus payment"""
+    # Verify that the payment is being processed by the same user as in Telegram
+    user_result = await db.execute(
+        UserModel.__table__.select()
+        .where(UserModel.id == user_id)
+    )
+    user = user_result.fetchone()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if str(user.telegram_id) != str(user_data['id']):
+        raise HTTPException(status_code=403, detail="Unauthorized to process bonus payment for this user")
+    
     # Validate order exists
     order_result = await db.execute(
         OrderModel.__table__.select()
@@ -269,14 +298,6 @@ async def process_bonus_payment(
         raise HTTPException(status_code=404, detail="Order not found")
     
     # Validate user exists and has enough bonus balance
-    user_result = await db.execute(
-        UserModel.__table__.select()
-        .where(UserModel.id == user_id)
-    )
-    user = user_result.fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
     if user.bonus_balance < amount:
         raise HTTPException(status_code=400, detail="Insufficient bonus balance")
     

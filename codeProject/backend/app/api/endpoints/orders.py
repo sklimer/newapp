@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import uuid
 from datetime import datetime
 
 from app.core.database import get_db
+from app.core.security import require_telegram_auth, require_telegram_web_app
 from app.schemas.orders import Order, OrderCreate, OrderUpdate, OrderItem
 from app.models.orders import Order as OrderModel, OrderItem as OrderItemModel
 from app.models.users import User as UserModel
@@ -15,11 +16,13 @@ router = APIRouter()
 
 @router.get("/", response_model=List[Order])
 async def get_orders(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     skip: int = 0,
     limit: int = 100,
     user_id: int = None,
-    status: str = None
+    status: str = None,
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Get all orders with optional filters"""
     query = OrderModel.__table__.select()
@@ -39,7 +42,9 @@ async def get_orders(
 @router.get("/{order_id}", response_model=Order)
 async def get_order(
     order_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Get a specific order by ID"""
     result = await db.execute(
@@ -55,7 +60,9 @@ async def get_order(
 @router.post("/", response_model=Order)
 async def create_order(
     order: OrderCreate,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_data: dict = Depends(require_telegram_auth())
 ):
     """Create a new order"""
     # Validate user exists
@@ -66,6 +73,10 @@ async def create_order(
     user = user_result.fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    # Verify that the order is being created by the same user as in Telegram
+    if str(user.telegram_id) != str(user_data['id']):
+        raise HTTPException(status_code=403, detail="Unauthorized to create order for this user")
     
     # Generate unique order number
     order_number = f"ORD{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:8].upper()}"
@@ -143,7 +154,9 @@ async def create_order(
 async def update_order(
     order_id: int,
     order_update: OrderUpdate,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Update an order"""
     result = await db.execute(
@@ -173,7 +186,9 @@ async def update_order(
 @router.delete("/{order_id}")
 async def delete_order(
     order_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Delete an order (soft delete by setting is_active to False)"""
     result = await db.execute(
@@ -196,7 +211,9 @@ async def delete_order(
 @router.get("/{order_id}/items", response_model=List[OrderItem])
 async def get_order_items(
     order_id: int,
-    db: AsyncSession = Depends(get_db)
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    is_telegram = Depends(require_telegram_web_app())
 ):
     """Get all items for an order"""
     result = await db.execute(
