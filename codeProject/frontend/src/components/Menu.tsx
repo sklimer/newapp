@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../store/store';
+import { useDispatch } from 'react-redux';
+import { addItem } from '../store/cartSlice';
 
 interface MenuItem {
   id: number;
@@ -56,7 +56,7 @@ const Menu: React.FC = () => {
 
   const addToCart = (item: MenuItem) => {
     // Dispatch action to add item to cart
-    console.log(`Added ${item.name} to cart`);
+    dispatch(addItem({ id: item.id, name: item.name, price: item.price }));
   };
 
   return (
