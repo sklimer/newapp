@@ -78,8 +78,8 @@ npm run dev
 ```
 ### Запуск сервера в git bash 
 ```bash
-cd frontend
-ssh -p 2222 dev.proxy.example.com -R dev:80:localhost:5173
+
+ssh -p 2222 -R dev:80:localhost:5173 -o ServerAliveInterval=30 172.24.96.1 
 ```
 
 

@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 import enum
 from sqlalchemy.orm import declarative_base
 
-Base = declarative_base()
+from app.core.database import Base
 
 
 class NotificationType(str, enum.Enum):
