@@ -15,6 +15,7 @@ lib/
 lib64/
 parts/
 sdist/
+
 var/
 wheels/
 *.egg-info/
@@ -44,4 +45,7 @@ ENV/
 htmlcov/
 .coverage.*
 .coverage
+DATA/
+codeProject/frontend/node_modules
+DATA/
 ```

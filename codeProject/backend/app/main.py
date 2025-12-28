@@ -37,8 +37,6 @@ async def shutdown():
 # Include API router
 
 
-# Подключаем статические файлы и шаблоны
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Подключаем маршруты
 app.include_router(api_router, prefix="/api/v1")
