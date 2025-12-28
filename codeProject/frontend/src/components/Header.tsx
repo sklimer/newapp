@@ -23,6 +23,7 @@ const Header: React.FC = () => {
               </Link>
             </li>
             <li><Link to="/profile">Profile</Link></li>
+            <li><Link to="/menu-management">Manage Menu</Link></li>
           </ul>
         </nav>
       </div>

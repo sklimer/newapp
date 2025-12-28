@@ -26,6 +26,33 @@ export interface Category {
   id: number;
   name: string;
   description?: string;
+  image_url?: string;
+  position?: number;
+  is_active: boolean;
+  is_stop_list: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface Product {
+  id: number;
+  category_id: number;
+  name: string;
+  description?: string;
+  image_url?: string;
+  price: number;
+  discount_price?: number;
+  discount_percent?: number;
+  weight?: number;
+  preparation_time?: number;
+  ingredients?: string;
+  position?: number;
+  is_active: boolean;
+  is_stop_list: boolean;
+  is_recommended: boolean;
+  is_new: boolean;
+  created_at: string;
+  updated_at?: string;
 }
 
 // Cart types
