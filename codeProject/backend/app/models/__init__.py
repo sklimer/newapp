@@ -1,6 +1,7 @@
 from sqlalchemy.ext.declarative import declarative_base
 from .users import User
 from .business import Business, BusinessAdmin, BusinessImage, BusinessHours
+from .cart import CartItem
 from .menu import Category, Product, ProductOption, ProductCategory, ProductOptionGroup, ProductVariant
 from .orders import Order, OrderItem, OrderItemOption, OrderType, OrderStatus
 from .payments import Payment, Transaction, PaymentStatus, PaymentMethod

@@ -53,6 +53,7 @@ class Product(Base):
     order_items = relationship("OrderItem", back_populates="product")
     variants = relationship("ProductVariant", back_populates="product")
     option_groups = relationship("ProductOptionGroup", back_populates="product")
+    cart_items = relationship("CartItem", back_populates="product", cascade="all, delete-orphan")
 
 
 class ProductCategory(Base):
