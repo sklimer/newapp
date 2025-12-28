@@ -36,3 +36,4 @@ class User(Base):
     orders = relationship("Order", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
     bonuses = relationship("BonusTransaction", back_populates="user")
+    cart_items = relationship("CartItem", back_populates="user", cascade="all, delete-orphan")
