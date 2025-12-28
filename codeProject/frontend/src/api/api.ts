@@ -68,6 +68,38 @@ export const menuApi = {
   getCategories: () => 
     apiClient.get('/menu/categories'),
   
+  getCategory: (id: number) => 
+    apiClient.get(`/menu/categories/${id}`),
+    
+  createCategory: (data: any) => 
+    apiClient.post('/menu/categories', data),
+    
+  updateCategory: (id: number, data: any) => 
+    apiClient.put(`/menu/categories/${id}`, data),
+    
+  deleteCategory: (id: number) => 
+    apiClient.delete(`/menu/categories/${id}`),
+    
+  getProducts: (categoryId?: number) => {
+    let url = '/menu/products';
+    if (categoryId) {
+      url += `?category_id=${categoryId}`;
+    }
+    return apiClient.get(url);
+  },
+  
+  getProduct: (id: number) => 
+    apiClient.get(`/menu/products/${id}`),
+    
+  createProduct: (data: any) => 
+    apiClient.post('/menu/products', data),
+    
+  updateProduct: (id: number, data: any) => 
+    apiClient.put(`/menu/products/${id}`, data),
+    
+  deleteProduct: (id: number) => 
+    apiClient.delete(`/menu/products/${id}`),
+    
   getItem: (id: number) => 
     apiClient.get(`/menu/${id}`),
 };
