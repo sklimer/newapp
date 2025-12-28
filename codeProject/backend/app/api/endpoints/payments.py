@@ -32,7 +32,7 @@ async def get_payments(
 ):
     """Get all payments with optional filters"""
     query = PaymentModel.__table__.select()
-    
+    print(f'is_telegram= {is_telegram}')
     if user_id:
         query = query.where(PaymentModel.user_id == user_id)
     if order_id:

@@ -62,7 +62,7 @@ def require_telegram_auth():
         
         # Validate the init data
         validate_telegram_init_data(init_data)
-        
+
         # Return validated user data
         return get_telegram_user_data(init_data)
     
@@ -79,3 +79,4 @@ def require_telegram_web_app():
         return True
     
     return check_telegram_environment
+
