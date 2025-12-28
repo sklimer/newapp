@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  router:
+    image: valian/docker-nginx-auto-ssl
+    environment:
+      ALLOWED_DOMAINS: 'dev.proxy.example.com'
+      SITES: 'dev.proxy.example.com=dev-tunnel:8888;'
+    volumes:
+      - ./DATA/nginx/ssl:/etc/resty-auto-ssl
+    ports:
+      - 443:443
+      - 80:80
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: '5m'
+
+  # SSH tunnel
+  # https://docs.ssi.sh/getting-started 
+  dev-tunnel:
+    image: antoniomika/sish:latest
+    volumes:
+      # for access from local machine need ssh key at folder v:
+      # ssh-keygen -t ed25519 -C "usermail@gmail.com"
+      # cp ~/.ssh/id_ed25519.pub ./DATA/proxy/pubkeys
+      - ./DATA/proxy/pubkeys:/pubkeys
+      - ./DATA/proxy/keys:/keys
+    ports:
+      - 2222:2222
+    command: |
+      --ssh-address=:2222
+      --http-address=:8888
+      --https-address=:8443
+      --authentication-keys-directory=/pubkeys
+      --private-keys-directory=/keys
+      --redirect-root=false
+      --bind-random-ports=false
+      --bind-random-subdomains=false
+      --domain=proxy.example.com
+      --tcp-aliases=dev=localhost:5173
+    restart: always
+    logging:
+      driver: json-file
+      options:
+        max-file: '3'
+        max-size: '5m'
+        dev-tunnel:

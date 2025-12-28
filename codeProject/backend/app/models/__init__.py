@@ -11,3 +11,7 @@ from .notification import Notification, NotificationType, NotificationStatus, No
 
 # Create a base class for all models
 Base = declarative_base()
+
+
+
+

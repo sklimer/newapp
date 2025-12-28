@@ -45,3 +45,16 @@ class User(UserBase):
 
     class Config:
         from_attributes = True
+
+
+class UserResponse(UserBase):
+    id: int
+    total_spent: float
+    order_count: int
+    is_active: bool
+    is_blocked: bool
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

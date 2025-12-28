@@ -152,11 +152,17 @@ git fetch origin
 git checkout master
 
 # 3. Объединить изменения из ветки
-git merge origin/qwen-code-499d9f3e-9dcc-4f71-b0c9-23c966ddd7ab --no-ff
+git merge origin/qwen-code-9493e7dd-f73f-4f09-b621-e756f492392a --no-ff
 
 # 4. Если попросит сообщение - нажать Esc, затем :wq
 
 # 5. Запушить
 git push origin master
 
-git commit -m "Merge qwen-code-499d9f3e-9dcc-4f71-b0c9-23c966ddd7ab branch"    
+git commit -m "Merge qwen-code-9493e7dd-f73f-4f09-b621-e756f492392a branch"    
+
+# Создать файл миграции
+alembic revision --autogenerate -m "Create users and cart tables"
+
+# Применить миграцию
+alembic upgrade head
