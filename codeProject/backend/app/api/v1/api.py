@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-
 from app.api.endpoints import (
     admin,
     analytics,
@@ -30,3 +29,5 @@ api_router.include_router(notification.router, prefix="/notification", tags=["no
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(business.router, prefix="/business", tags=["business"])
+api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(cart.router, prefix="/cart", tags=["cart"])
