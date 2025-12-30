@@ -2,16 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { menuApi } from '../api/api';
 import { Category, Product } from '../types/types';
 
-const { 
-  createCategory, 
-  updateCategory, 
-  deleteCategory, 
-  getCategories, 
-  createProduct, 
-  updateProduct, 
-  deleteProduct, 
-  getProducts 
-} = menuApi;
+
 
 const MenuManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'categories' | 'products'>('categories');
@@ -50,7 +41,7 @@ const MenuManagementPage: React.FC = () => {
 
   const loadCategories = async () => {
     try {
-      const data = await getCategories();
+      const data = await menuApi.getCategories();
       setCategories(data);
     } catch (error) {
       console.error('Error loading categories:', error);
@@ -59,7 +50,7 @@ const MenuManagementPage: React.FC = () => {
 
   const loadProducts = async () => {
     try {
-      const data = await getProducts();
+      const data = await menuApi.getProducts();
       setProducts(data);
     } catch (error) {
       console.error('Error loading products:', error);
@@ -68,7 +59,7 @@ const MenuManagementPage: React.FC = () => {
 
   const handleCreateCategory = async () => {
     try {
-      await createCategory(newCategory);
+      await menuApi.createCategory(newCategory);
       setNewCategory({
         name: '',
         description: '',
@@ -86,7 +77,7 @@ const MenuManagementPage: React.FC = () => {
   const handleUpdateCategory = async () => {
     if (!editingCategory) return;
     try {
-      await updateCategory(editingCategory.id, editingCategory);
+      await menuApi.updateCategory(editingCategory.id, editingCategory);
       setEditingCategory(null);
       loadCategories();
     } catch (error) {
@@ -97,7 +88,7 @@ const MenuManagementPage: React.FC = () => {
   const handleDeleteCategory = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this category?')) {
       try {
-        await deleteCategory(id);
+        await menuApi.deleteCategory(id);
         loadCategories();
       } catch (error) {
         console.error('Error deleting category:', error);
@@ -107,7 +98,7 @@ const MenuManagementPage: React.FC = () => {
 
   const handleCreateProduct = async () => {
     try {
-      await createProduct(newProduct);
+      await menuApi.createProduct(newProduct);
       setNewProduct({
         name: '',
         description: '',
@@ -143,7 +134,7 @@ const MenuManagementPage: React.FC = () => {
   const handleDeleteProduct = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        await deleteProduct(id);
+        await menuApi.deleteProduct(id);
         loadProducts();
       } catch (error) {
         console.error('Error deleting product:', error);
