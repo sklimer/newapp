@@ -1,52 +1,58 @@
 ```
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# Dependencies
+node_modules/
 
 # Environment
 .env
 .env.local
-.env.*
-.venv/
-venv/
-ENV/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
+*.env.*
 
 # Logs
 *.log
 
-# Coverage
-.coverage
-htmlcov/
-.coverage.*
-.coverage
-DATA/
-codeProject/frontend/node_modules
-codeProject/.idea
+# Editor
+.vscode/
+.idea/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+ENV/
+
+# Build outputs
+dist/
+build/
+*.min.js
+*.min.css
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+htmlcov/
+.coverage
+*.coverage
+
+# Cache directories
+.cache/
+.mypy_cache/
+.pytest_cache/
+.nyc_output/
+coverage/
+junit/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*~
+.DS_Store
 ```

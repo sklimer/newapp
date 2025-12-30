@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import {
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  getCategories,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  getProducts
-} from '../api/api';
+import { menuApi } from '../api/api';
 import { Category, Product } from '../types/types';
+
+const { 
+  createCategory, 
+  updateCategory, 
+  deleteCategory, 
+  getCategories, 
+  createProduct, 
+  updateProduct, 
+  deleteProduct, 
+  getProducts 
+} = menuApi;
 
 const MenuManagementPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'categories' | 'products'>('categories');
