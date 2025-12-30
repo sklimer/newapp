@@ -7,21 +7,14 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
-    allowedHosts: ['dev.proxy.example.com'],
-
-    // ВАЖНО: ВАША ОСОБЕННОСТЬ
-    // Так как sish уже работает как прокси, не нужно proxy в Vite
-    // Весь трафик будет идти через nginx -> sish -> ваши сервисы
-
-    // Для работы HMR через туннель
+    
+    // Standard HMR configuration for direct connection
     hmr: {
-      host: 'dev.proxy.example.com',
-      protocol: 'wss',  // SSL подключение
-      clientPort: 443
+      overlay: true,
     },
 
-    // Отключаем встроенный прокси, так как у вас есть nginx + sish
-    // proxy: {} - не нужно!
+    // If you need WebSocket configuration for special network setups
+    // ws: true  // Enable WebSocket (default behavior)
   },
 
   // Для правильных путей в продакшене
