@@ -55,4 +55,8 @@ junit/
 *.log
 *~
 .DS_Store
+
+DATA/
+codeProject/.idea
+codeProject/frontend/node_modules
 ```

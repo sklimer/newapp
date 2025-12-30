@@ -152,14 +152,23 @@ git fetch origin
 git checkout master
 
 # 3. Объединить изменения из ветки
-git merge origin/qwen-code-9493e7dd-f73f-4f09-b621-e756f492392a --no-ff
+git merge origin/qwen-code-4bf456ea-a68c-46db-912a-24c82a7be9dd --no-ff
 
 # 4. Если попросит сообщение - нажать Esc, затем :wq
 
 # 5. Запушить
 git push origin master
 
-git commit -m "Merge qwen-code-9493e7dd-f73f-4f09-b621-e756f492392a branch"    
+git commit -m "Merge qwen-code-4bf456ea-a68c-46db-912a-24c82a7be9dd branch"    
+
+
+DATA/
+codeProject/.idea
+codeProject/frontend/node_modules
+
+
+
+
 
 # Создать файл миграции
 alembic revision --autogenerate -m "Create users and cart tables"
