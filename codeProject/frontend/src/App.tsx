@@ -24,8 +24,12 @@ const App: React.FC = () => {
     setTimeout(checkTelegramEnvironment, 100);
   }, []);
 
-  // If not in Telegram environment, show a blocking message
+  // If not in Telegram environment, show a warning message but continue to render the app
   if (isTelegramEnvironment === false) {
+    console.warn("This app is designed to run in Telegram Web App environment. Some features may not work properly.");
+    // Optionally show a small banner to inform the user
+    // Uncomment the following code if you want to show a visual warning:
+    /*
     return (
       <div style={{
         display: 'flex',
@@ -33,30 +37,32 @@ const App: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         height: '100vh',
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#fff',
         color: '#333',
         textAlign: 'center',
         padding: '20px',
         fontFamily: 'Arial, sans-serif'
       }}>
-        <h1 style={{ fontSize: '24px', marginBottom: '15px' }}>Application Access Denied</h1>
+        <h1 style={{ fontSize: '24px', marginBottom: '15px' }}>Development Mode</h1>
         <p style={{ fontSize: '18px', marginBottom: '15px' }}>
-          This application can only be used within Telegram.
+          This application is designed to run in Telegram.
         </p>
         <p style={{ fontSize: '16px', marginBottom: '20px' }}>
-          Please open this link in the Telegram app.
+          Running in development mode for testing purposes.
         </p>
-        <div style={{ 
-          fontSize: '14px', 
-          color: '#666',
-          maxWidth: '80%',
-          lineHeight: '1.5'
-        }}>
-          <p>Why this restriction?</p>
-          <p>This app requires Telegram's secure authentication system to protect your account and data.</p>
-        </div>
+        <button 
+          onClick={() => setIsTelegramEnvironment(null)} 
+          style={{
+            padding: '10px 20px',
+            fontSize: '16px',
+            cursor: 'pointer'
+          }}
+        >
+          Try to Load App
+        </button>
       </div>
     );
+    */
   }
 
   // While checking the environment, show loading state
