@@ -271,26 +271,30 @@ const MenuManagementPage: React.FC = () => {
           </div>
 
           {/* Categories List */}
-          {categories.map((category) => (
-            <div key={category.id} className="bg-white p-4 rounded-lg shadow">
-              <h3 className="font-semibold text-lg">{category.name}</h3>
-              <p className="text-gray-600 text-sm">{category.description}</p>
-              <div className="mt-2 flex space-x-2">
-                <button
-                  className="text-blue-500 hover:text-blue-700"
-                  onClick={() => setEditingCategory(category)}
-                >
-                  Edit
-                </button>
-                <button
-                  className="text-red-500 hover:text-red-700"
-                  onClick={() => handleDeleteCategory(category.id)}
-                >
-                  Delete
-                </button>
+                    {categories ? (
+            categories.map((category) => (
+              <div key={category.id} className="bg-white p-4 rounded-lg shadow">
+                <h3 className="font-semibold text-lg">{category.name}</h3>
+                <p className="text-gray-600 text-sm">{category.description}</p>
+                <div className="mt-2 flex space-x-2">
+                  <button
+                    className="text-blue-500 hover:text-blue-700"
+                    onClick={() => setEditingCategory(category)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="text-red-500 hover:text-red-700"
+                    onClick={() => handleDeleteCategory(category.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            <div className="text-center py-4">Loading categories...</div>
+          )}
         </div>
       )}
 
@@ -399,7 +403,7 @@ const MenuManagementPage: React.FC = () => {
                 }
               >
                 <option value="">Select Category</option>
-                {categories.map((category) => (
+                {categories && categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -488,31 +492,35 @@ const MenuManagementPage: React.FC = () => {
           </div>
 
           {/* Products List */}
-          {products.map((product) => {
-            const category = categories.find(cat => cat.id === product.category_id);
-            return (
-              <div key={product.id} className="bg-white p-4 rounded-lg shadow">
-                <h3 className="font-semibold text-lg">{product.name}</h3>
-                <p className="text-gray-600 text-sm">{product.description}</p>
-                <p className="text-blue-500 font-semibold">Price: {product.price}</p>
-                <p className="text-gray-500 text-xs">Category: {category?.name || 'Uncategorized'}</p>
-                <div className="mt-2 flex space-x-2">
-                  <button
-                    className="text-blue-500 hover:text-blue-700"
-                    onClick={() => setEditingProduct(product)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="text-red-500 hover:text-red-700"
-                    onClick={() => handleDeleteProduct(product.id)}
-                  >
-                    Delete
-                  </button>
+          {products && categories ? (
+            products.map((product) => {
+              const category = categories.find(cat => cat.id === product.category_id);
+              return (
+                <div key={product.id} className="bg-white p-4 rounded-lg shadow">
+                  <h3 className="font-semibold text-lg">{product.name}</h3>
+                  <p className="text-gray-600 text-sm">{product.description}</p>
+                  <p className="text-blue-500 font-semibold">Price: {product.price}</p>
+                  <p className="text-gray-500 text-xs">Category: {category?.name || 'Uncategorized'}</p>
+                  <div className="mt-2 flex space-x-2">
+                    <button
+                      className="text-blue-500 hover:text-blue-700"
+                      onClick={() => setEditingProduct(product)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => handleDeleteProduct(product.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <div className="text-center py-4">Loading products...</div>
+          )}
         </div>
       )}
     </div>

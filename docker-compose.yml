@@ -1,10 +1,12 @@
 version: '3.8'
 
 services:
+  # Ваш существующий SSL-прокси (оставляем без изменений)
   router:
     image: valian/docker-nginx-auto-ssl
     environment:
       ALLOWED_DOMAINS: 'dev.proxy.example.com'
+      # Подключаем оба сервиса
       SITES: 'dev.proxy.example.com=dev-tunnel:8888;'
     volumes:
       - ./DATA/nginx/ssl:/etc/resty-auto-ssl
@@ -18,18 +20,15 @@ services:
         max-file: '3'
         max-size: '5m'
 
-  # SSH tunnel
-  # https://docs.ssi.sh/getting-started 
+  # SSH tunnel - расширяем конфигурацию
   dev-tunnel:
     image: antoniomika/sish:latest
     volumes:
-      # for access from local machine need ssh key at folder v:
-      # ssh-keygen -t ed25519 -C "usermail@gmail.com"
-      # cp ~/.ssh/id_ed25519.pub ./DATA/proxy/pubkeys
       - ./DATA/proxy/pubkeys:/pubkeys
       - ./DATA/proxy/keys:/keys
     ports:
       - 2222:2222
+      - "8000:8000"  # Пробрасываем порт Uvicorn наружу
     command: |
       --ssh-address=:2222
       --http-address=:8888
@@ -41,10 +40,30 @@ services:
       --bind-random-subdomains=false
       --domain=proxy.example.com
       --tcp-aliases=dev=localhost:5173
+      # Добавляем туннель для API
+      --tcp-aliases=api=localhost:8000
     restart: always
     logging:
       driver: json-file
       options:
         max-file: '3'
         max-size: '5m'
-        dev-tunnel:
+
+  # Vite dev server
+  frontend:
+    build: ./frontend  # или используйте image
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=/api  # Переменная окружения для фронтенда
+    # Проксируется через dev-tunnel на порт 5173
+
+  # FastAPI/Uvicorn сервер
+  backend:
+    build: ./backend
+    volumes:
+      - ./backend:/app
+    environment:
+      - ALLOWED_ORIGINS=https://dev.proxy.example.com,http://localhost:5173
+    # Проксируется через dev-tunnel на порт 8000

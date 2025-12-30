@@ -1,23 +1,42 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1.api import api_router
-from .core.config import settings
-from .core.database import database
-from .core.middleware import TelegramWebAppMiddleware
-import uvicorn
-from app.api.endpoints.admin import router as admin_router
 from fastapi.staticfiles import StaticFiles
+import uvicorn
 
+from app.api.v1.api import api_router
+from app.api.endpoints.admin import router as admin_router
+from app.core.config import settings
+from app.core.database import database
+from app.core.middleware import TelegramWebAppMiddleware
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Управление жизненным циклом приложения"""
+    # Запуск приложения
+    print("Starting application...")
+    await database.connect()
+    yield
+    # Завершение работы
+    print("Shutting down application...")
+    await database.disconnect()
+
+# Создание экземпляра FastAPI с lifespan
 app = FastAPI(
     title="Restaurant Telegram Mini App API",
     description="Backend API for Telegram mini app with payment integration for restaurants",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/api/docs" if settings.DEBUG else None,
+    redoc_url="/api/redoc" if settings.DEBUG else None,
+    openapi_url="/api/openapi.json" if settings.DEBUG else None,
+    lifespan=lifespan
 )
 
-# Add Telegram Web App middleware first
+# Middleware
+# 1. Telegram Web App middleware (первый, чтобы обрабатывать входящие запросы)
 app.add_middleware(TelegramWebAppMiddleware)
 
-# Add CORS middleware
+# 2. CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -26,21 +45,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-async def startup():
-    await database.connect()
-
-@app.on_event("shutdown")
-async def shutdown():
-    await database.disconnect()
-
-# Include API router
-
-
-
-# Подключаем маршруты
+# Подключение маршрутов
 app.include_router(api_router, prefix="/api/v1")
 app.include_router(admin_router)
 
+# Подключение статических файлов (если нужно)
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Корневой endpoint для проверки здоровья
+@app.get("/")
+async def root():
+    return {
+        "message": "Restaurant Telegram Mini App API",
+        "version": "1.0.0",
+        "docs": "/api/docs" if settings.DEBUG else None
+    }
+
+@app.get("/health")
+async def health_check():
+    """Endpoint для проверки здоровья сервиса"""
+    db_status = "connected" if database.is_connected else "disconnected"
+    return {
+        "status": "healthy",
+        "service": "restaurant-telegram-api",
+        "database": db_status,
+        "debug": settings.DEBUG
+    }
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.DEBUG,
+        log_level=settings.LOG_LEVEL.lower()
+    )
