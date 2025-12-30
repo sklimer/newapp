@@ -152,14 +152,14 @@ git fetch origin
 git checkout master
 
 # 3. Объединить изменения из ветки
-git merge origin/qwen-code-4bf456ea-a68c-46db-912a-24c82a7be9dd --no-ff
+git merge origin/qwen-code-4afb2821-f6ad-4215-a66f-1602a1d106fe --no-ff
 
 # 4. Если попросит сообщение - нажать Esc, затем :wq
 
 # 5. Запушить
 git push origin master
 
-git commit -m "Merge qwen-code-4bf456ea-a68c-46db-912a-24c82a7be9dd branch"    
+git commit -m "Merge qwen-code-4afb2821-f6ad-4215-a66f-1602a1d106fe branch"    
 
 
 DATA/

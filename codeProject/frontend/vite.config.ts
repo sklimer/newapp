@@ -14,11 +14,7 @@ export default defineConfig({
     // Весь трафик будет идти через nginx -> sish -> ваши сервисы
 
     // Для работы HMR через туннель
-    hmr: {
-      host: 'dev.proxy.example.com',
-      protocol: 'wss',  // SSL подключение
-      clientPort: 443
-    },
+
 
     // Отключаем встроенный прокси, так как у вас есть nginx + sish
     // proxy: {} - не нужно!
