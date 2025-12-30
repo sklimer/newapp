@@ -2,10 +2,15 @@
 # Dependencies
 node_modules/
 
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
 
 # Logs
 *.log
@@ -13,6 +18,17 @@ node_modules/
 # Editor
 .vscode/
 .idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+htmlcov/
+*.coverage
 
 # Python
 __pycache__/
@@ -20,43 +36,21 @@ __pycache__/
 *.pyo
 *.pyd
 .Python
+env/
 venv/
 .venv/
-env/
-ENV/
-
-# Build outputs
-dist/
-build/
-*.min.js
-*.min.css
-
-# OS generated files
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git/
+!.gitignore
 .DS_Store
 Thumbs.db
-
-# Testing
-coverage/
-htmlcov/
-.coverage
-*.coverage
-
-# Cache directories
-.cache/
-.mypy_cache/
-.pytest_cache/
-.nyc_output/
-coverage/
-junit/
-
-# Temporary files
-*.tmp
-*.temp
-*.log
-*~
-.DS_Store
-
-DATA/
-codeProject/.idea
-codeProject/frontend/node_modules
 ```
