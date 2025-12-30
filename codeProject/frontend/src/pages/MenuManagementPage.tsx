@@ -123,7 +123,7 @@ const MenuManagementPage: React.FC = () => {
   const handleUpdateProduct = async () => {
     if (!editingProduct) return;
     try {
-      await updateProduct(editingProduct.id, editingProduct);
+      await menuApi.updateProduct(editingProduct.id, editingProduct);
       setEditingProduct(null);
       loadProducts();
     } catch (error) {
