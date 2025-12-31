@@ -9,6 +9,7 @@ from datetime import datetime
 from app.core.database import get_db
 from app.core.config import settings
 from app.core.security import require_telegram_auth, require_telegram_web_app
+from app.api.deps import get_current_user_from_telegram
 from app.schemas.payments import Payment, PaymentCreate, PaymentUpdate, CreatePaymentRequest, PaymentResponse
 from app.models.payments import Payment as PaymentModel
 from app.models.orders import Order as OrderModel
@@ -68,7 +69,7 @@ async def create_payment(
     payment: PaymentCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user_data: dict = Depends(require_telegram_auth())
+    current_user = Depends(get_current_user_from_telegram)
 ):
     """Create a new payment"""
     # Validate order exists
@@ -80,25 +81,20 @@ async def create_payment(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # Validate user exists
-    user_result = await db.execute(
-        UserModel.__table__.select()
-        .where(UserModel.id == payment.user_id)
-    )
-    user = user_result.fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
     # Verify that the payment is being created by the same user as in Telegram
-    if str(user.telegram_id) != str(user_data['id']):
+    if order.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Unauthorized to create payment for this user")
     
     # If payment method is bonus, verify user has enough bonus balance
     if payment.payment_method == "BONUS":
-        if user.bonus_balance < payment.amount:
+        if current_user.bonus_balance < payment.amount:
             raise HTTPException(status_code=400, detail="Insufficient bonus balance")
     
-    db_payment = PaymentModel(**payment.dict())
+    # Create payment with the current user's ID
+    payment_data = payment.dict()
+    payment_data["user_id"] = current_user.id  # Use the authenticated user's ID
+    
+    db_payment = PaymentModel(**payment_data)
     db.add(db_payment)
     await db.commit()
     await db.refresh(db_payment)
@@ -269,24 +265,14 @@ async def yookassa_webhook(
 @router.post("/process-bonus-payment")
 async def process_bonus_payment(
     order_id: int,
-    user_id: int,
     amount: float,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user_data: dict = Depends(require_telegram_auth())
+    current_user = Depends(get_current_user_from_telegram)
 ):
     """Process a bonus payment"""
     # Verify that the payment is being processed by the same user as in Telegram
-    user_result = await db.execute(
-        UserModel.__table__.select()
-        .where(UserModel.id == user_id)
-    )
-    user = user_result.fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if str(user.telegram_id) != str(user_data['id']):
-        raise HTTPException(status_code=403, detail="Unauthorized to process bonus payment for this user")
+    # No need to check user ID again since current_user is already authenticated
     
     # Validate order exists
     order_result = await db.execute(
@@ -297,14 +283,18 @@ async def process_bonus_payment(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
-    # Validate user exists and has enough bonus balance
-    if user.bonus_balance < amount:
+    # Check if order belongs to current user
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Unauthorized to process bonus payment for this order")
+    
+    # Validate user has enough bonus balance
+    if current_user.bonus_balance < amount:
         raise HTTPException(status_code=400, detail="Insufficient bonus balance")
     
     # Create payment record
     payment_data = {
         "order_id": order_id,
-        "user_id": user_id,
+        "user_id": current_user.id,  # Use authenticated user's ID
         "payment_method": "BONUS",
         "amount": amount,
         "status": "succeeded",
@@ -317,7 +307,7 @@ async def process_bonus_payment(
     # Deduct bonus from user
     await db.execute(
         UserModel.__table__.update()
-        .where(UserModel.id == user_id)
+        .where(UserModel.id == current_user.id)
         .values(bonus_balance=UserModel.bonus_balance - amount)
     )
     

@@ -6,6 +6,7 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.core.security import require_telegram_auth, require_telegram_web_app
+from app.api.deps import get_current_user_from_telegram
 from app.schemas.orders import Order, OrderCreate, OrderUpdate, OrderItem
 from app.models.orders import Order as OrderModel, OrderItem as OrderItemModel
 from app.models.users import User as UserModel
@@ -62,21 +63,11 @@ async def create_order(
     order: OrderCreate,
     request: Request,
     db: AsyncSession = Depends(get_db),
-    user_data: dict = Depends(require_telegram_auth())
+    current_user = Depends(get_current_user_from_telegram)
 ):
     """Create a new order"""
-    # Validate user exists
-    user_result = await db.execute(
-        UserModel.__table__.select()
-        .where(UserModel.id == order.user_id)
-    )
-    user = user_result.fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Verify that the order is being created by the same user as in Telegram
-    if str(user.telegram_id) != str(user_data['id']):
-        raise HTTPException(status_code=403, detail="Unauthorized to create order for this user")
+    # Use the current user's ID instead of the one from the request body
+    # This ensures that users can only create orders for themselves
     
     # Generate unique order number
     order_number = f"ORD{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:8].upper()}"
@@ -85,8 +76,9 @@ async def create_order(
     total_amount = order.total_amount
     final_amount = max(0, total_amount - order.bonus_used)
     
-    # Create order
+    # Create order with the current user's ID
     order_data = order.dict()
+    order_data["user_id"] = current_user.id  # Use the authenticated user's ID
     order_data["order_number"] = order_number
     order_data["final_amount"] = final_amount
     order_data["payment_status"] = "pending"
@@ -125,7 +117,7 @@ async def create_order(
     # Update user's order count and total spent
     await db.execute(
         UserModel.__table__.update()
-        .where(UserModel.id == order.user_id)
+        .where(UserModel.id == current_user.id)
         .values(
             order_count=UserModel.order_count + 1,
             total_spent=UserModel.total_spent + final_amount
@@ -137,7 +129,7 @@ async def create_order(
     if order.bonus_used > 0:
         await db.execute(
             UserModel.__table__.update()
-            .where(UserModel.id == order.user_id)
+            .where(UserModel.id == current_user.id)
             .values(bonus_balance=UserModel.bonus_balance - order.bonus_used)
         )
         await db.commit()
