@@ -31,6 +31,7 @@ export default defineConfig({
     secure: false,
     rewrite: (path) => path.replace(/^\/api/, '/api/v1'), // Add /v1 to the API path
     },
+
     },
     // Отключаем встроенный прокси, так как у вас есть nginx + sish
     // proxy: {} - не нужно!

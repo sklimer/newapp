@@ -14,6 +14,10 @@ class Settings(BaseSettings):
         default=os.getenv("DATABASE_URL", "postgresql://user:password@localhost/restaurant_db"),
         description="PostgreSQL connection URL"
     )
+    ASYNC_DATABASE_URL: str = Field(
+        default=os.getenv("ASYNC_DATABASE_URL", "postgresql+asyncpg://user:password@localhost/restaurant_db"),
+        description="PostgreSQL async connection URL"
+    )
 
     # Telegram settings
     TELEGRAM_BOT_TOKEN: str = Field(

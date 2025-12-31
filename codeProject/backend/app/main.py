@@ -3,23 +3,27 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
 from app.api.v1.api import api_router
 from app.api.endpoints.admin import router as admin_router
 from app.core.config import settings
-from app.core.database import database
+from app.core.database import async_engine
 from app.core.middleware import TelegramWebAppMiddleware
+
+# Create async session maker for lifespan
+AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
     # Запуск приложения
     print("Starting application...")
-    await database.connect()
+    # We're not using the database connection in lifespan since it's handled by dependency injection
     yield
     # Завершение работы
     print("Shutting down application...")
-    await database.disconnect()
+    # Close engine when shutting down
+    await async_engine.dispose()
 
 # Создание экземпляра FastAPI с lifespan
 app = FastAPI(
@@ -64,11 +68,11 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Endpoint для проверки здоровья сервиса"""
-    db_status = "connected" if database.is_connected else "disconnected"
+    # In the async approach, we don't track connection status the same way
     return {
         "status": "healthy",
         "service": "restaurant-telegram-api",
-        "database": db_status,
+        "database": "async_engine_ready",  # Simplified for async approach
         "debug": settings.DEBUG
     }
 

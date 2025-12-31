@@ -30,7 +30,9 @@ async def get_categories(
         .limit(limit)
     )
     categories = result.fetchall()
-    return [Category.from_orm(row) for row in categories]
+    # Convert to ORM objects first
+    category_objects = [CategoryModel(**row._asdict()) for row in categories]
+    return [Category.model_validate(category_obj) for category_obj in category_objects]
 
 
 @router.get("/categories/{category_id}", response_model=Category)
@@ -46,7 +48,8 @@ async def get_category(
     category = result.fetchone()
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
-    return Category.from_orm(category)
+    category_obj = CategoryModel(**category._asdict())
+    return Category.model_validate(category_obj)
 
 
 @router.post("/categories", response_model=Category)
@@ -59,7 +62,7 @@ async def create_category(
     db.add(db_category)
     await db.commit()
     await db.refresh(db_category)
-    return Category.from_orm(db_category)
+    return Category.model_validate(db_category)
 
 
 @router.put("/categories/{category_id}", response_model=Category)
@@ -90,7 +93,8 @@ async def update_category(
         .where(CategoryModel.id == category_id)
     )
     updated_category = result.fetchone()
-    return Category.from_orm(updated_category)
+    updated_category_obj = CategoryModel(**updated_category._asdict())
+    return Category.model_validate(updated_category_obj)
 
 
 @router.delete("/categories/{category_id}")
@@ -134,7 +138,9 @@ async def get_products(
     
     result = await db.execute(query)
     products = result.fetchall()
-    return [Product.from_orm(row) for row in products]
+    # Convert to ORM objects first
+    product_objects = [ProductModel(**row._asdict()) for row in products]
+    return [Product.model_validate(product_obj) for product_obj in product_objects]
 
 
 @router.get("/products/{product_id}", response_model=Product)
@@ -150,7 +156,8 @@ async def get_product(
     product = result.fetchone()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    return Product.from_orm(product)
+    product_obj = ProductModel(**product._asdict())
+    return Product.model_validate(product_obj)
 
 
 @router.post("/products", response_model=Product)
@@ -163,7 +170,7 @@ async def create_product(
     db.add(db_product)
     await db.commit()
     await db.refresh(db_product)
-    return Product.from_orm(db_product)
+    return Product.model_validate(db_product)
 
 
 @router.put("/products/{product_id}", response_model=Product)
@@ -194,7 +201,8 @@ async def update_product(
         .where(ProductModel.id == product_id)
     )
     updated_product = result.fetchone()
-    return Product.from_orm(updated_product)
+    updated_product_obj = ProductModel(**updated_product._asdict())
+    return Product.model_validate(updated_product_obj)
 
 
 @router.delete("/products/{product_id}")
@@ -233,7 +241,9 @@ async def get_product_options(
         .order_by(ProductOptionModel.position)
     )
     options = result.fetchall()
-    return [ProductOption.from_orm(row) for row in options]
+    # Convert to ORM objects first
+    option_objects = [ProductOptionModel(**row._asdict()) for row in options]
+    return [ProductOption.model_validate(option_obj) for option_obj in option_objects]
 
 
 @router.post("/products/{product_id}/options", response_model=ProductOption)
@@ -249,7 +259,7 @@ async def create_product_option(
     db.add(db_option)
     await db.commit()
     await db.refresh(db_option)
-    return ProductOption.from_orm(db_option)
+    return ProductOption.model_validate(db_option)
 
 
 @router.get("/products/{product_id}/variants", response_model=List[ProductVariant])
@@ -265,7 +275,9 @@ async def get_product_variants(
         .order_by(ProductVariantModel.position)
     )
     variants = result.fetchall()
-    return [ProductVariant.from_orm(row) for row in variants]
+    # Convert to ORM objects first
+    variant_objects = [ProductVariantModel(**row._asdict()) for row in variants]
+    return [ProductVariant.model_validate(variant_obj) for variant_obj in variant_objects]
 
 
 @router.post("/products/{product_id}/variants", response_model=ProductVariant)
@@ -281,4 +293,4 @@ async def create_product_variant(
     db.add(db_variant)
     await db.commit()
     await db.refresh(db_variant)
-    return ProductVariant.from_orm(db_variant)
+    return ProductVariant.model_validate(db_variant)
