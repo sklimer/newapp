@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -9,6 +9,8 @@ from app.api.endpoints.admin import router as admin_router
 from app.core.config import settings
 from app.core.database import async_engine
 from app.core.middleware import TelegramWebAppMiddleware
+from app.core.security import get_or_create_user_from_telegram
+from app.api.deps import get_db
 
 # Create async session maker for lifespan
 AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
@@ -58,11 +60,22 @@ app.include_router(admin_router)
 
 # Корневой endpoint для проверки здоровья
 @app.get("/")
-async def root():
+async def root(request: Request, db: AsyncSession = Depends(get_db)):
+    # Проверяем, есть ли пользователь Telegram, и добавляем его при необходимости
+    user = None
+    try:
+        user = await get_or_create_user_from_telegram(request, db)
+    except Exception:
+        # Если не удается получить/создать пользователя (например, не в Telegram Web App), 
+        # просто продолжаем без пользователя
+        pass
+    
     return {
         "message": "Restaurant Telegram Mini App API",
         "version": "1.0.0",
-        "docs": "/api/docs" if settings.DEBUG else None
+        "docs": "/api/docs" if settings.DEBUG else None,
+        "user_authenticated": user is not None,
+        "user_id": user.id if user else None
     }
 
 @app.get("/health")
