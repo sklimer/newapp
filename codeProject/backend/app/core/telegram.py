@@ -14,8 +14,12 @@ def validate_telegram_init_data(init_data: str) -> bool:
     https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
     """
     try:
+        print(f"Debug: Validating init data: {init_data[:50]}...")
+        print(f"Debug: Bot token used for validation: {settings.TELEGRAM_BOT_TOKEN[:10] if settings.TELEGRAM_BOT_TOKEN else 'NOT SET'}...")
+        
         # Parse the init data
         parsed_params = dict(urllib.parse.parse_qsl(init_data))
+        print(f"Debug: Parsed params keys: {list(parsed_params.keys())}")
         
         # Get the received hash
         received_hash = parsed_params.get('hash')
@@ -28,6 +32,7 @@ def validate_telegram_init_data(init_data: str) -> bool:
             if key != 'hash':
                 items_to_sign.append(f"{key}={value}")
         data_check_string = '\n'.join(items_to_sign)
+        print(f"Debug: Data check string: {data_check_string}")
         
         # Create secret key using HMAC-SHA256 with the string "WebAppData" and bot token
         secret_key = hmac.new(
@@ -45,6 +50,7 @@ def validate_telegram_init_data(init_data: str) -> bool:
         
         # Compare hashes
         if not hmac.compare_digest(expected_hash, received_hash):
+            print(f"Debug: Hash mismatch. Expected: {expected_hash[:20]}..., Received: {received_hash[:20]}...")
             raise HTTPException(status_code=400, detail="Invalid init data hash")
         
         # Check if the data is not expired (within 1 hour for safety)
@@ -57,13 +63,14 @@ def validate_telegram_init_data(init_data: str) -> bool:
             if current_time - auth_time > 3600:
                 raise HTTPException(status_code=400, detail="Auth date is too old")
         
+        print("Debug: Init data validation successful")
         return True
         
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error validating Telegram init data: {e}")
-        raise HTTPException(status_code=400, detail="Invalid init data")
+        raise HTTPException(status_code=400, detail=f"Invalid init data: {str(e)}")
 
 
 def get_telegram_user_data(init_data: str) -> Dict[str, Any]:
@@ -71,14 +78,17 @@ def get_telegram_user_data(init_data: str) -> Dict[str, Any]:
     Extracts user data from Telegram init data after validation
     """
     try:
+        print(f"Debug: Extracting user data from init_data")
         parsed_params = dict(urllib.parse.parse_qsl(init_data))
         user_data_str = parsed_params.get('user')
         if not user_data_str:
             raise HTTPException(status_code=400, detail="No user data found")
         
         user_data = json.loads(user_data_str)
+        print(f"Debug: Extracted user data: {user_data}")
         return user_data
     except Exception as e:
+        print(f"Debug: Error extracting user data: {e}")
         raise HTTPException(status_code=400, detail=f"Could not extract user data: {e}")
 
 
@@ -98,5 +108,7 @@ def is_running_in_telegram_web_app(request: Request) -> bool:
         "t.me" in referer or
         "web.telegram.org" in referer
     )
+    
+    print(f"Debug: Telegram environment check - UA: {'Telegram/tgWebApp' if ('Telegram' in user_agent or 'tgWebApp' in user_agent) else 'Other'}, Header: {'Present' if telegram_web_app_header else 'Absent'}, Referer: {'t.me/web.telegram.org' if ('t.me' in referer or 'web.telegram.org' in referer) else 'Other'}, Result: {is_telegram_env}")
     
     return is_telegram_env
