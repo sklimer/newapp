@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import List, Optional
 from pydantic import Field, validator, field_validator
@@ -212,12 +213,12 @@ settings = Settings()
 if __name__ == "__main__":
     try:
         settings.check_production_settings()
-        print("✅ Settings loaded successfully!")
+        logging.info("✅ Settings loaded successfully!")
         if settings.DEBUG:
-            print(f"📝 Debug mode: ON")
-            print(f"🌐 Allowed origins: {settings.ALLOWED_ORIGINS}")
+            logging.info(f"📝 Debug mode: ON")
+            logging.info(f"🌐 Allowed origins: {settings.ALLOWED_ORIGINS}")
     except Exception as e:
-        print(f"❌ Error in settings: {e}")
+        logging.error(f"❌ Error in settings: {e}")
         if settings.DEBUG:
             import traceback
 

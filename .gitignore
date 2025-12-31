@@ -2,44 +2,61 @@
 # Compiled and build artifacts
 *.pyc
 __pycache__/
-*.o
-*.obj
-*.out
-DATA/
-codeProject/.idea
-codeProject/frontend/node_modules
-codeProject/README.md
-# Dependencies
-venv/
-.venv/
-node_modules/
-dist/
+*.pyo
+*.pyd
+*.so
+*.egg-info/
 build/
-target/
-.gradle/
-.mypy_cache/
-.pytest_cache/
+dist/
+*.class
+
+# Dependencies
+.venv/
+venv/
+env/
+.env/
+requirements/*.txt
+*.whl
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
+*.swo
+*.bak
+*.cache
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
+.envrc
 
 # Editors
 .vscode/
 .idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
 
 # Coverage
-coverage/
-htmlcov/
 .coverage
+htmlcov/
+.coverage.*
+coverage.xml
 
-# System files
+# Testing
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# OS generated
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 ```

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
@@ -154,7 +155,7 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
             return None
     except Exception as e:
         # Log the error for debugging
-        print(f"Unexpected error in get_or_create_user_from_telegram: {e}")
+        logging.error(f"Unexpected error in get_or_create_user_from_telegram: {e}")
         # For any other error, return None
         return None
 
