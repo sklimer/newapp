@@ -88,12 +88,17 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
     """
     # Check if request is coming from Telegram Web App
     if not is_running_in_telegram_web_app(request):
-        raise HTTPException(status_code=400, detail="Request must come from Telegram Web App")
-    
-    # Get init data from header
+        # If not in Telegram environment, return None without error
+        return None
+
+    # Get init data from header or query parameter
     init_data = request.headers.get("x-telegram-web-app-init-data")
     if not init_data:
-        raise HTTPException(status_code=400, detail="Missing Telegram init data")
+        # Try to get from query parameters if not in header
+        init_data = request.query_params.get("initData")
+        if not init_data:
+            # If no init data in headers or query params, return None without error
+            return None
     
     try:
         # Validate the init data
@@ -113,17 +118,20 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
 
         if db_user:
             # Update user data if changed
-            update_data = {
+            update_fields = {
                 'first_name': user_data.get('first_name'),
                 'last_name': user_data.get('last_name'),
                 'username': user_data.get('username'),
             }
-            for field, value in update_data.items():
-                if value is not None:
+            updated = False
+            for field, value in update_fields.items():
+                if value is not None and getattr(db_user, field) != value:
                     setattr(db_user, field, value)
+                    updated = True
 
-            await db.commit()
-            await db.refresh(db_user)
+            if updated:
+                await db.commit()
+                await db.refresh(db_user)
             return db_user
         else:
             # Create new user
@@ -140,7 +148,13 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
             await db.commit()
             await db.refresh(db_user)
             return db_user
-    except Exception:
-        # If there's an error validating or processing Telegram data, return None
+    except HTTPException:
+            # If there's a validation error (like invalid init data), return None
+            # Don't raise the exception to avoid breaking the main page
+            return None
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Unexpected error in get_or_create_user_from_telegram: {e}")
+        # For any other error, return None
         return None
 
