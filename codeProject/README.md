@@ -152,14 +152,14 @@ git fetch origin
 git checkout master
 
 # 3. Объединить изменения из ветки
-git merge origin/qwen-code-ed42c895-b716-4ba2-8080-73595839a93d --no-ff
+git merge origin/qwen-code-4461e569-ccfa-415b-820c-a4b99df9c068 --no-ff
 
 # 4. Если попросит сообщение - нажать Esc, затем :wq
 
 # 5. Запушить
 git push origin master
 
-git commit -m "Merge qwen-code-ed42c895-b716-4ba2-8080-73595839a93d branch"    
+git commit -m "Merge qwen-code-4461e569-ccfa-415b-820c-a4b99df9c068 branch"    
 
 
 DATA/
@@ -167,7 +167,7 @@ codeProject/.idea
 codeProject/frontend/node_modules
 
 
-
+user:password
 
 
 # Создать файл миграции
