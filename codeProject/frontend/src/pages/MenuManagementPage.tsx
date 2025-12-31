@@ -41,19 +41,30 @@ const MenuManagementPage: React.FC = () => {
 
   const loadCategories = async () => {
     try {
-      const data = await menuApi.getCategories();
-      setCategories(data);
+      const response = await menuApi.getCategories();
+      // Extract the actual data from the response
+      // The response object typically has a 'data' property containing the actual payload
+      const data = response.data;
+      // Ensure we're working with an array
+      const categoriesData = Array.isArray(data) ? data : (data?.categories || []);
+      setCategories(categoriesData);
     } catch (error) {
       console.error('Error loading categories:', error);
+      setCategories([]); // Ensure categories is always an array
     }
   };
 
   const loadProducts = async () => {
     try {
-      const data = await menuApi.getProducts();
-      setProducts(data);
+      const response = await menuApi.getProducts();
+      // Extract the actual data from the response
+      const data = response.data;
+      // Ensure we're working with an array
+      const productsData = Array.isArray(data) ? data : (data?.products || []);
+      setProducts(productsData);
     } catch (error) {
       console.error('Error loading products:', error);
+      setProducts([]); // Ensure products is always an array
     }
   };
 
@@ -271,7 +282,7 @@ const MenuManagementPage: React.FC = () => {
           </div>
 
           {/* Categories List */}
-                    {categories ? (
+                    {categories && Array.isArray(categories) ? (
             categories.map((category) => (
               <div key={category.id} className="bg-white p-4 rounded-lg shadow">
                 <h3 className="font-semibold text-lg">{category.name}</h3>
@@ -403,7 +414,7 @@ const MenuManagementPage: React.FC = () => {
                 }
               >
                 <option value="">Select Category</option>
-                {categories && categories.map((category) => (
+                {categories && Array.isArray(categories) && categories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>
@@ -492,7 +503,7 @@ const MenuManagementPage: React.FC = () => {
           </div>
 
           {/* Products List */}
-          {products && categories ? (
+          {products && categories && Array.isArray(products) && Array.isArray(categories) ? (
             products.map((product) => {
               const category = categories.find(cat => cat.id === product.category_id);
               return (
