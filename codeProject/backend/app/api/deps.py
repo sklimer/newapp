@@ -54,7 +54,10 @@ async def get_current_user_from_telegram(
     """
     Get current user from Telegram Web App data, creating if doesn't exist
     """
-    return await get_or_create_user_from_telegram(request, db)
+    user = await get_or_create_user_from_telegram(request, db)
+    if user is None:
+        raise HTTPException(status_code=400, detail="Request must come from Telegram Web App with valid init data")
+    return user
 
 
 def get_admin_user(current_user: User = Depends(get_current_user)):

@@ -61,14 +61,7 @@ app.include_router(admin_router)
 @app.get("/")
 async def root(request: Request, db: AsyncSession = Depends(get_db)):
     # Проверяем, есть ли пользователь Telegram, и добавляем его при необходимости
-    user = None
-    try:
-        user = await get_or_create_user_from_telegram(request, db)
-    except Exception:
-        # Если не удается получить/создать пользователя (например, не в Telegram Web App),
-        # просто продолжаем без пользователя
-        pass
-
+    user = await get_or_create_user_from_telegram(request, db)
     return {
         "message": "Restaurant Telegram Mini App API",
         "version": "1.0.0",

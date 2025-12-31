@@ -95,48 +95,52 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
     if not init_data:
         raise HTTPException(status_code=400, detail="Missing Telegram init data")
     
-    # Validate the init data
-    validate_telegram_init_data(init_data)
-    
-    # Get user data
-    user_data = get_telegram_user_data(init_data)
-    
-    # Check if user already exists by telegram_id
-    from app.models.users import User as UserModel
-    from sqlalchemy.future import select
-    
-    result = await db.execute(
-        select(UserModel).where(UserModel.telegram_id == str(user_data['id']))
-    )
-    db_user = result.scalar_one_or_none()
-    
-    if db_user:
-        # Update user data if changed
-        update_data = {
-            'first_name': user_data.get('first_name'),
-            'last_name': user_data.get('last_name'),
-            'username': user_data.get('username'),
-        }
-        for field, value in update_data.items():
-            if value is not None:
-                setattr(db_user, field, value)
-        
-        await db.commit()
-        await db.refresh(db_user)
-        return db_user
-    else:
-        # Create new user
-        user_create_data = {
-            'telegram_id': str(user_data['id']),
-            'first_name': user_data.get('first_name'),
-            'last_name': user_data.get('last_name'),
-            'username': user_data.get('username'),
-            'referral_code': f"REF{str(user_data['id'])[-6:].upper()}"  # Generate referral code
-        }
-        
-        db_user = UserModel(**user_create_data)
-        db.add(db_user)
-        await db.commit()
-        await db.refresh(db_user)
-        return db_user
+    try:
+        # Validate the init data
+        validate_telegram_init_data(init_data)
+
+        # Get user data
+        user_data = get_telegram_user_data(init_data)
+
+        # Check if user already exists by telegram_id
+        from app.models.users import User as UserModel
+        from sqlalchemy.future import select
+
+        result = await db.execute(
+            select(UserModel).where(UserModel.telegram_id == str(user_data['id']))
+        )
+        db_user = result.scalar_one_or_none()
+
+        if db_user:
+            # Update user data if changed
+            update_data = {
+                'first_name': user_data.get('first_name'),
+                'last_name': user_data.get('last_name'),
+                'username': user_data.get('username'),
+            }
+            for field, value in update_data.items():
+                if value is not None:
+                    setattr(db_user, field, value)
+
+            await db.commit()
+            await db.refresh(db_user)
+            return db_user
+        else:
+            # Create new user
+            user_create_data = {
+                'telegram_id': str(user_data['id']),
+                'first_name': user_data.get('first_name'),
+                'last_name': user_data.get('last_name'),
+                'username': user_data.get('username'),
+                'referral_code': f"REF{str(user_data['id'])[-6:].upper()}"  # Generate referral code
+            }
+
+            db_user = UserModel(**user_create_data)
+            db.add(db_user)
+            await db.commit()
+            await db.refresh(db_user)
+            return db_user
+    except Exception:
+        # If there's an error validating or processing Telegram data, return None
+        return None
 
