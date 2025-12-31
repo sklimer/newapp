@@ -26,10 +26,11 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000', // или другой порт вашего backend сервера
-        changeOrigin: true,
-        secure: false,
-      },
+    target: 'http://localhost:8000',
+    changeOrigin: true,
+    secure: false,
+    rewrite: (path) => path.replace(/^\/api/, '/api/v1'), // Add /v1 to the API path
+    },
     },
     // Отключаем встроенный прокси, так как у вас есть nginx + sish
     // proxy: {} - не нужно!
