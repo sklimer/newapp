@@ -165,7 +165,7 @@ git commit -m "Merge qwen-code-4461e569-ccfa-415b-820c-a4b99df9c068 branch"
 DATA/
 codeProject/.idea
 codeProject/frontend/node_modules
-
+codeProject/README.md
 
 user:password
 
