@@ -3,6 +3,7 @@ from typing import Optional
 import jwt
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
 from .config import settings
 from .telegram import validate_telegram_init_data, get_telegram_user_data, is_running_in_telegram_web_app
 
