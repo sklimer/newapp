@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
@@ -16,24 +17,24 @@ router = APIRouter()
 
 @router.get("/", response_model=List[Order])
 async def get_orders(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    skip: int = 0,
-    limit: int = 100,
-    user_id: int = None,
-    status: str = None,
-    is_telegram = Depends(require_telegram_web_app())
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        skip: int = 0,
+        limit: int = 100,
+        user_id: int = None,
+        status: str = None,
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Get all orders with optional filters"""
     query = OrderModel.__table__.select()
-    print(f'is_telegram= {is_telegram}')
+    logging.info(f'is_telegram= {is_telegram}')
     if user_id:
         query = query.where(OrderModel.user_id == user_id)
     if status:
         query = query.where(OrderModel.status == status)
-    
+
     query = query.order_by(OrderModel.created_at.desc()).offset(skip).limit(limit)
-    
+
     result = await db.execute(query)
     orders = result.fetchall()
     return [Order.from_orm(row) for row in orders]
@@ -41,10 +42,10 @@ async def get_orders(
 
 @router.get("/{order_id}", response_model=Order)
 async def get_order(
-    order_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    is_telegram = Depends(require_telegram_web_app())
+        order_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Get a specific order by ID"""
     result = await db.execute(
@@ -59,10 +60,10 @@ async def get_order(
 
 @router.post("/", response_model=Order)
 async def create_order(
-    order: OrderCreate,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    user_data: dict = Depends(require_telegram_auth())
+        order: OrderCreate,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        user_data: dict = Depends(require_telegram_auth())
 ):
     """Create a new order"""
     # Validate user exists
@@ -73,29 +74,29 @@ async def create_order(
     user = user_result.fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Verify that the order is being created by the same user as in Telegram
     if str(user.telegram_id) != str(user_data['id']):
         raise HTTPException(status_code=403, detail="Unauthorized to create order for this user")
-    
+
     # Generate unique order number
     order_number = f"ORD{datetime.now().strftime('%Y%m%d')}{str(uuid.uuid4())[:8].upper()}"
-    
+
     # Calculate total amount
     total_amount = order.total_amount
     final_amount = max(0, total_amount - order.bonus_used)
-    
+
     # Create order
     order_data = order.dict()
     order_data["order_number"] = order_number
     order_data["final_amount"] = final_amount
     order_data["payment_status"] = "pending"
-    
+
     db_order = OrderModel(**order_data)
     db.add(db_order)
     await db.commit()
     await db.refresh(db_order)
-    
+
     # Create order items
     for item in order.order_items:
         # Validate product exists
@@ -106,10 +107,10 @@ async def create_order(
         product = product_result.fetchone()
         if not product:
             raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
-        
+
         # Calculate item total
         item_total = item.price * item.quantity
-        
+
         order_item = OrderItemModel(
             order_id=db_order.id,
             product_id=item.product_id,
@@ -119,9 +120,9 @@ async def create_order(
             note=item.note
         )
         db.add(order_item)
-    
+
     await db.commit()
-    
+
     # Update user's order count and total spent
     await db.execute(
         UserModel.__table__.update()
@@ -132,7 +133,7 @@ async def create_order(
         )
     )
     await db.commit()
-    
+
     # If bonus was used, update user's bonus balance
     if order.bonus_used > 0:
         await db.execute(
@@ -141,7 +142,7 @@ async def create_order(
             .values(bonus_balance=UserModel.bonus_balance - order.bonus_used)
         )
         await db.commit()
-    
+
     result = await db.execute(
         OrderModel.__table__.select()
         .where(OrderModel.id == db_order.id)
@@ -152,11 +153,11 @@ async def create_order(
 
 @router.put("/{order_id}", response_model=Order)
 async def update_order(
-    order_id: int,
-    order_update: OrderUpdate,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    is_telegram = Depends(require_telegram_web_app())
+        order_id: int,
+        order_update: OrderUpdate,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Update an order"""
     result = await db.execute(
@@ -166,7 +167,7 @@ async def update_order(
     db_order = result.fetchone()
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     update_data = order_update.dict(exclude_unset=True)
     await db.execute(
         OrderModel.__table__.update()
@@ -174,7 +175,7 @@ async def update_order(
         .values(**update_data)
     )
     await db.commit()
-    
+
     result = await db.execute(
         OrderModel.__table__.select()
         .where(OrderModel.id == order_id)
@@ -185,10 +186,10 @@ async def update_order(
 
 @router.delete("/{order_id}")
 async def delete_order(
-    order_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    is_telegram = Depends(require_telegram_web_app())
+        order_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Delete an order (soft delete by setting is_active to False)"""
     result = await db.execute(
@@ -198,7 +199,7 @@ async def delete_order(
     db_order = result.fetchone()
     if not db_order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     await db.execute(
         OrderModel.__table__.update()
         .where(OrderModel.id == order_id)
@@ -210,10 +211,10 @@ async def delete_order(
 
 @router.get("/{order_id}/items", response_model=List[OrderItem])
 async def get_order_items(
-    order_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    is_telegram = Depends(require_telegram_web_app())
+        order_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Get all items for an order"""
     result = await db.execute(

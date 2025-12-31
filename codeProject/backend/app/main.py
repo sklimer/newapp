@@ -1,9 +1,11 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.orm import sessionmaker
 from app.api.v1.api import api_router
 from app.api.endpoints.admin import router as admin_router
 from app.core.config import settings
@@ -11,18 +13,27 @@ from app.core.database import async_engine
 from app.core.middleware import TelegramWebAppMiddleware
 from app.core.security import get_or_create_user_from_telegram
 from app.api.deps import get_db
+
+
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 # Create async session maker for lifespan
-AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
     # Запуск приложения
-    print("Starting application...")
+    logging.info("Starting application...")
     # We're not using the database connection in lifespan since it's handled by dependency injection
     yield
     # Завершение работы
-    print("Shutting down application...")
+    logging.info("Shutting down application...")
     # Close engine when shutting down
     await async_engine.dispose()
 
@@ -61,6 +72,7 @@ app.include_router(admin_router)
 @app.get("/")
 async def root(request: Request, db: AsyncSession = Depends(get_db)):
     # Проверяем, есть ли пользователь Telegram, и добавляем его при необходимости
+    logger.info('сработал @app.get("/")')
     user = await get_or_create_user_from_telegram(request, db)
     return {
         "message": "Restaurant Telegram Mini App API",

@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
@@ -22,24 +23,24 @@ Configuration.configure(settings.YOOKASSA_SHOP_ID, settings.YOOKASSA_API_KEY)
 
 @router.get("/", response_model=List[Payment])
 async def get_payments(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    skip: int = 0,
-    limit: int = 100,
-    user_id: int = None,
-    order_id: int = None,
-    is_telegram = Depends(require_telegram_web_app())
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        skip: int = 0,
+        limit: int = 100,
+        user_id: int = None,
+        order_id: int = None,
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Get all payments with optional filters"""
     query = PaymentModel.__table__.select()
-    print(f'is_telegram= {is_telegram}')
+    logging.info(f'is_telegram= {is_telegram}')
     if user_id:
         query = query.where(PaymentModel.user_id == user_id)
     if order_id:
         query = query.where(PaymentModel.order_id == order_id)
-    
+
     query = query.order_by(PaymentModel.created_at.desc()).offset(skip).limit(limit)
-    
+
     result = await db.execute(query)
     payments = result.fetchall()
     return [Payment.from_orm(row) for row in payments]
@@ -47,10 +48,10 @@ async def get_payments(
 
 @router.get("/{payment_id}", response_model=Payment)
 async def get_payment(
-    payment_id: int,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    is_telegram = Depends(require_telegram_web_app())
+        payment_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Get a specific payment by ID"""
     result = await db.execute(
@@ -65,10 +66,10 @@ async def get_payment(
 
 @router.post("/", response_model=Payment)
 async def create_payment(
-    payment: PaymentCreate,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    user_data: dict = Depends(require_telegram_auth())
+        payment: PaymentCreate,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        user_data: dict = Depends(require_telegram_auth())
 ):
     """Create a new payment"""
     # Validate order exists
@@ -79,7 +80,7 @@ async def create_payment(
     order = order_result.fetchone()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     # Validate user exists
     user_result = await db.execute(
         UserModel.__table__.select()
@@ -88,16 +89,16 @@ async def create_payment(
     user = user_result.fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Verify that the payment is being created by the same user as in Telegram
     if str(user.telegram_id) != str(user_data['id']):
         raise HTTPException(status_code=403, detail="Unauthorized to create payment for this user")
-    
+
     # If payment method is bonus, verify user has enough bonus balance
     if payment.payment_method == "BONUS":
         if user.bonus_balance < payment.amount:
             raise HTTPException(status_code=400, detail="Insufficient bonus balance")
-    
+
     db_payment = PaymentModel(**payment.dict())
     db.add(db_payment)
     await db.commit()
@@ -107,11 +108,11 @@ async def create_payment(
 
 @router.put("/{payment_id}", response_model=Payment)
 async def update_payment(
-    payment_id: int,
-    payment_update: PaymentUpdate,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    is_telegram = Depends(require_telegram_web_app())
+        payment_id: int,
+        payment_update: PaymentUpdate,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Update a payment"""
     result = await db.execute(
@@ -121,7 +122,7 @@ async def update_payment(
     db_payment = result.fetchone()
     if not db_payment:
         raise HTTPException(status_code=404, detail="Payment not found")
-    
+
     update_data = payment_update.dict(exclude_unset=True)
     await db.execute(
         PaymentModel.__table__.update()
@@ -129,7 +130,7 @@ async def update_payment(
         .values(**update_data)
     )
     await db.commit()
-    
+
     result = await db.execute(
         PaymentModel.__table__.select()
         .where(PaymentModel.id == payment_id)
@@ -140,10 +141,10 @@ async def update_payment(
 
 @router.post("/create-yookassa-payment")
 async def create_yookassa_payment(
-    request_data: CreatePaymentRequest,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    is_telegram = Depends(require_telegram_web_app())
+        request_data: CreatePaymentRequest,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        is_telegram=Depends(require_telegram_web_app())
 ):
     """Create a YooKassa payment"""
     # Validate order exists
@@ -154,10 +155,10 @@ async def create_yookassa_payment(
     order = order_result.fetchone()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     # Create YooKassa payment
     idempotence_key = str(uuid.uuid4())
-    
+
     payment_request = {
         "amount": {
             "value": str(request_data.amount),
@@ -174,10 +175,10 @@ async def create_yookassa_payment(
             "user_id": order.user_id
         }
     }
-    
+
     try:
         yookassa_payment = YooPayment.create(payment_request, idempotence_key)
-        
+
         # Save payment record to database
         payment_data = {
             "order_id": request_data.order_id,
@@ -189,12 +190,12 @@ async def create_yookassa_payment(
             "provider_response": str(yookassa_payment),
             "description": f"Payment for order {order.order_number}"
         }
-        
+
         db_payment = PaymentModel(**payment_data)
         db.add(db_payment)
         await db.commit()
         await db.refresh(db_payment)
-        
+
         return PaymentResponse(
             payment_id=yookassa_payment.id,
             payment_url=yookassa_payment.confirmation.confirmation_url,
@@ -206,19 +207,19 @@ async def create_yookassa_payment(
 
 @router.post("/yookassa-webhook")
 async def yookassa_webhook(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
+        request: Request,
+        db: AsyncSession = Depends(get_db)
 ):
     """Handle YooKassa webhook"""
     try:
         # Get the JSON payload from the request
         payload = await request.json()
-        
+
         # Process the webhook event
         event_type = payload.get('event')
         payment_data = payload.get('object', {})
         payment_id = payment_data.get('id')
-        
+
         if event_type == 'payment.succeeded':
             # Update payment status in database
             await db.execute(
@@ -226,7 +227,7 @@ async def yookassa_webhook(
                 .where(PaymentModel.provider_payment_id == payment_id)
                 .values(status='succeeded')
             )
-            
+
             # Update order status to paid
             order_id = payment_data.get('metadata', {}).get('order_id')
             if order_id:
@@ -235,10 +236,10 @@ async def yookassa_webhook(
                     .where(OrderModel.id == order_id)
                     .values(payment_status='paid')
                 )
-            
+
             await db.commit()
             return {"status": "ok"}
-        
+
         elif event_type == 'payment.waiting_for_capture':
             # Update payment status in database
             await db.execute(
@@ -248,7 +249,7 @@ async def yookassa_webhook(
             )
             await db.commit()
             return {"status": "ok"}
-        
+
         elif event_type == 'payment.canceled':
             # Update payment status in database
             await db.execute(
@@ -258,22 +259,22 @@ async def yookassa_webhook(
             )
             await db.commit()
             return {"status": "ok"}
-        
+
         return {"status": "ignored"}
-    
+
     except Exception as e:
-        print(f"Error processing webhook: {str(e)}")
+        logging.error(f"Error processing webhook: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
 
 @router.post("/process-bonus-payment")
 async def process_bonus_payment(
-    order_id: int,
-    user_id: int,
-    amount: float,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    user_data: dict = Depends(require_telegram_auth())
+        order_id: int,
+        user_id: int,
+        amount: float,
+        request: Request,
+        db: AsyncSession = Depends(get_db),
+        user_data: dict = Depends(require_telegram_auth())
 ):
     """Process a bonus payment"""
     # Verify that the payment is being processed by the same user as in Telegram
@@ -284,10 +285,10 @@ async def process_bonus_payment(
     user = user_result.fetchone()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if str(user.telegram_id) != str(user_data['id']):
         raise HTTPException(status_code=403, detail="Unauthorized to process bonus payment for this user")
-    
+
     # Validate order exists
     order_result = await db.execute(
         OrderModel.__table__.select()
@@ -296,11 +297,11 @@ async def process_bonus_payment(
     order = order_result.fetchone()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
-    
+
     # Validate user exists and has enough bonus balance
     if user.bonus_balance < amount:
         raise HTTPException(status_code=400, detail="Insufficient bonus balance")
-    
+
     # Create payment record
     payment_data = {
         "order_id": order_id,
@@ -310,23 +311,23 @@ async def process_bonus_payment(
         "status": "succeeded",
         "description": f"Bonus payment for order {order.order_number}"
     }
-    
+
     db_payment = PaymentModel(**payment_data)
     db.add(db_payment)
-    
+
     # Deduct bonus from user
     await db.execute(
         UserModel.__table__.update()
         .where(UserModel.id == user_id)
         .values(bonus_balance=UserModel.bonus_balance - amount)
     )
-    
+
     # Update order payment status
     await db.execute(
         OrderModel.__table__.update()
         .where(OrderModel.id == order_id)
         .values(payment_status='paid')
     )
-    
+
     await db.commit()
     return Payment.from_orm(db_payment)

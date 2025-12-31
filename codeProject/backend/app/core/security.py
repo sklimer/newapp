@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 import jwt
@@ -7,9 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .config import settings
 from .telegram import validate_telegram_init_data, get_telegram_user_data, is_running_in_telegram_web_app
 
-
 security = HTTPBearer()
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 def verify_token(token: str) -> dict:
     """Verify JWT token and return payload"""
@@ -48,11 +53,12 @@ def require_telegram_auth():
     """
     Dependency to ensure requests come from Telegram and validate init data
     """
+
     async def validate_telegram_request(request: Request):
         # Check if request is coming from Telegram Web App
         if not is_running_in_telegram_web_app(request):
             raise HTTPException(status_code=400, detail="Request must come from Telegram Web App")
-        
+
         # Get init data from header or query parameter
         init_data = request.headers.get("x-telegram-web-app-init-data")
         if not init_data:
@@ -60,13 +66,13 @@ def require_telegram_auth():
             init_data = request.query_params.get(" initData")
             if not init_data:
                 raise HTTPException(status_code=400, detail="Missing Telegram init data")
-        
+
         # Validate the init data
         validate_telegram_init_data(init_data)
 
         # Return validated user data
         return get_telegram_user_data(init_data)
-    
+
     return validate_telegram_request
 
 
@@ -74,11 +80,12 @@ def require_telegram_web_app():
     """
     Dependency to ensure requests only come from Telegram Web App
     """
+
     async def check_telegram_environment(request: Request):
         if not is_running_in_telegram_web_app(request):
             raise HTTPException(status_code=400, detail="This endpoint is only accessible from Telegram Web App")
         return True
-    
+
     return check_telegram_environment
 
 
@@ -93,13 +100,14 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
 
     # Get init data from header or query parameter
     init_data = request.headers.get("x-telegram-web-app-init-data")
+    logger.info(f'sec init_data= {str(init_data)}')
     if not init_data:
         # Try to get from query parameters if not in header
         init_data = request.query_params.get("initData")
         if not init_data:
             # If no init data in headers or query params, return None without error
             return None
-    
+
     try:
         # Validate the init data
         validate_telegram_init_data(init_data)
@@ -149,12 +157,11 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
             await db.refresh(db_user)
             return db_user
     except HTTPException:
-            # If there's a validation error (like invalid init data), return None
-            # Don't raise the exception to avoid breaking the main page
-            return None
+        # If there's a validation error (like invalid init data), return None
+        # Don't raise the exception to avoid breaking the main page
+        return None
     except Exception as e:
         # Log the error for debugging
-        print(f"Unexpected error in get_or_create_user_from_telegram: {e}")
+        logger.error(f"Unexpected error in get_or_create_user_from_telegram: {e}")
         # For any other error, return None
         return None
-
