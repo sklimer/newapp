@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from typing import List
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user_from_telegram
 from app.models.users import User
 from app.models.cart import CartItem
 from app.models.menu import Product
@@ -17,7 +17,7 @@ router = APIRouter()
 async def add_to_cart(
     cart_item: CartItemCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_from_telegram)
 ):
     # Проверяем, существует ли продукт
     product_result = await db.execute(
@@ -58,7 +58,7 @@ async def add_to_cart(
 @router.get("/", response_model=List[CartItemResponse])
 async def get_cart(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_from_telegram)
 ):
     result = await db.execute(
         select(CartItem).where(CartItem.user_id == current_user.id)
@@ -72,7 +72,7 @@ async def update_cart_item(
     cart_item_id: int,
     cart_item_update: CartItemUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_from_telegram)
 ):
     result = await db.execute(
         select(CartItem).where(
@@ -103,7 +103,7 @@ async def update_cart_item(
 async def remove_from_cart(
     cart_item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_from_telegram)
 ):
     result = await db.execute(
         select(CartItem).where(
@@ -124,7 +124,7 @@ async def remove_from_cart(
 @router.delete("/")
 async def clear_cart(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user_from_telegram)
 ):
     await db.execute(
         CartItem.__table__.delete().where(CartItem.user_id == current_user.id)

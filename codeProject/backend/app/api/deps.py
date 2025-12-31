@@ -1,11 +1,12 @@
 from typing import AsyncGenerator
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.security import get_or_create_user_from_telegram
 from app.models.users import User
 from app.schemas.auth import TokenData
 
@@ -44,6 +45,16 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+
+async def get_current_user_from_telegram(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """
+    Get current user from Telegram Web App data, creating if doesn't exist
+    """
+    return await get_or_create_user_from_telegram(request, db)
 
 
 def get_admin_user(current_user: User = Depends(get_current_user)):
