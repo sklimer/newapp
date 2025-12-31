@@ -1,3 +1,4 @@
+import logging
 import hashlib
 import hmac
 import urllib.parse
@@ -62,7 +63,7 @@ def validate_telegram_init_data(init_data: str) -> bool:
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error validating Telegram init data: {e}")
+        logging.error(f"Error validating Telegram init data: {e}")
         raise HTTPException(status_code=400, detail="Invalid init data")
 
 

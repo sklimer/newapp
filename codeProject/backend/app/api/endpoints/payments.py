@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
@@ -32,7 +33,7 @@ async def get_payments(
 ):
     """Get all payments with optional filters"""
     query = PaymentModel.__table__.select()
-    print(f'is_telegram= {is_telegram}')
+    logging.info(f'is_telegram= {is_telegram}')
     if user_id:
         query = query.where(PaymentModel.user_id == user_id)
     if order_id:
@@ -262,7 +263,7 @@ async def yookassa_webhook(
         return {"status": "ignored"}
     
     except Exception as e:
-        print(f"Error processing webhook: {str(e)}")
+        logging.error(f"Error processing webhook: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing webhook: {str(e)}")
 
 

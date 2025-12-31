@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,11 +19,11 @@ AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
     # Запуск приложения
-    print("Starting application...")
+    logging.info("Starting application...")
     # We're not using the database connection in lifespan since it's handled by dependency injection
     yield
     # Завершение работы
-    print("Shutting down application...")
+    logging.info("Shutting down application...")
     # Close engine when shutting down
     await async_engine.dispose()
 

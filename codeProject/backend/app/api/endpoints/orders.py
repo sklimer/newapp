@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
@@ -26,7 +27,7 @@ async def get_orders(
 ):
     """Get all orders with optional filters"""
     query = OrderModel.__table__.select()
-    print(f'is_telegram= {is_telegram}')
+    logging.info(f'is_telegram= {is_telegram}')
     if user_id:
         query = query.where(OrderModel.user_id == user_id)
     if status:
