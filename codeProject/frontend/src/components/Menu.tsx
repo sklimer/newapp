@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { addItem } from '../store/cartSlice';
+import { menuApi } from '../api/api';
+import { Category, Product } from '../types/types';
 
 interface MenuItem {
   id: number;
@@ -9,66 +11,92 @@ interface MenuItem {
   price: number;
   category: string;
   image?: string;
+  available: boolean;
+  preparationTime?: number;
 }
 
 const Menu: React.FC = () => {
   const dispatch = useDispatch();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // In a real app, this would fetch from the API
-    const mockMenuItems: MenuItem[] = [
-      {
-        id: 1,
-        name: 'Margherita Pizza',
-        description: 'Tomato sauce, mozzarella, basil',
-        price: 12.99,
-        category: 'pizza'
-      },
-      {
-        id: 2,
-        name: 'Caesar Salad',
-        description: 'Romaine lettuce, croutons, parmesan, Caesar dressing',
-        price: 8.99,
-        category: 'salads'
-      },
-      {
-        id: 3,
-        name: 'Spaghetti Carbonara',
-        description: 'Pasta, eggs, pancetta, parmesan cheese',
-        price: 14.99,
-        category: 'pasta'
+    const fetchMenuData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch categories
+        const categoriesResponse = await menuApi.getCategories();
+        setCategories(categoriesResponse.data);
+        
+        // Fetch all products
+        const productsResponse = await menuApi.getProducts();
+        const products: Product[] = productsResponse.data;
+        
+        // Transform products to match MenuItem interface
+        const menuItemsData: MenuItem[] = products.map(product => ({
+          id: product.id,
+          name: product.name,
+          description: product.description || '',
+          price: product.discount_price || product.price,
+          category: categoriesResponse.data.find(cat => cat.id === product.category_id)?.name || 'uncategorized',
+          image: product.image_url,
+          available: product.is_active && !product.is_stop_list,
+          preparationTime: product.preparation_time
+        }));
+        
+        setMenuItems(menuItemsData);
+      } catch (err) {
+        console.error('Error fetching menu data:', err);
+        setError('Failed to load menu data');
+      } finally {
+        setLoading(false);
       }
-    ];
-    
-    setMenuItems(mockMenuItems);
-    
-    // Extract unique categories
-    const uniqueCategories = Array.from(new Set(mockMenuItems.map(item => item.category)));
-    setCategories(['all', ...uniqueCategories]);
+    };
+
+    fetchMenuData();
   }, []);
 
   const filteredItems = selectedCategory === 'all' 
     ? menuItems 
-    : menuItems.filter(item => item.category === selectedCategory);
+    : menuItems.filter(item => {
+        const category = categories.find(cat => cat.id === selectedCategory);
+        return category ? item.category === category.name : false;
+      });
 
   const addToCart = (item: MenuItem) => {
     // Dispatch action to add item to cart
     dispatch(addItem({ id: item.id, name: item.name, price: item.price }));
   };
 
+  if (loading) {
+    return <div className="menu">Loading menu...</div>;
+  }
+
+  if (error) {
+    return <div className="menu">Error: {error}</div>;
+  }
+
   return (
     <div className="menu">
       <div className="category-filter">
+        <button
+          key="all"
+          className={`category-btn ${selectedCategory === 'all' ? 'active' : ''}`}
+          onClick={() => setSelectedCategory('all')}
+        >
+          All
+        </button>
         {categories.map(category => (
           <button
-            key={category}
-            className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-            onClick={() => setSelectedCategory(category)}
+            key={category.id}
+            className={`category-btn ${selectedCategory === category.id ? 'active' : ''}`}
+            onClick={() => setSelectedCategory(category.id)}
           >
-            {category.charAt(0).toUpperCase() + category.slice(1)}
+            {category.name}
           </button>
         ))}
       </div>
@@ -80,9 +108,16 @@ const Menu: React.FC = () => {
               <h3>{item.name}</h3>
               <p>{item.description}</p>
               <p className="price">${item.price.toFixed(2)}</p>
+              {item.preparationTime && (
+                <p className="preparation-time">Prep time: {item.preparationTime} min</p>
+              )}
             </div>
-            <button className="add-to-cart-btn" onClick={() => addToCart(item)}>
-              Add to Cart
+            <button 
+              className={`add-to-cart-btn ${!item.available ? 'disabled' : ''}`} 
+              onClick={() => addToCart(item)}
+              disabled={!item.available}
+            >
+              {item.available ? 'Add to Cart' : 'Not Available'}
             </button>
           </div>
         ))}
