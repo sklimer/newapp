@@ -4,20 +4,33 @@ import fs from 'fs'
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    host: '0.0.0.0',
-    port: 5173,
-
+    server: {
+        host: '0.0.0.0',
+        port: 5173,
+        allowedHosts: [
+          'localhost',
+          '127.0.0.1',
+          '::1',
+          '0.0.0.0',
+          'dev.proxy.example.com'
+        ],
 
     // ВАЖНО: ВАША ОСОБЕННОСТЬ
     // Так как sish уже работает как прокси, не нужно proxy в Vite
     // Весь трафик будет идти через nginx -> sish -> ваши сервисы
 
     // Для работы HMR через туннель
-    hmr: {
-      verlay: true,
-    },
 
+    hmr: {
+     overlay: true,
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000', // или другой порт вашего backend сервера
+        changeOrigin: true,
+        secure: false,
+      },
+    },
     // Отключаем встроенный прокси, так как у вас есть nginx + sish
     // proxy: {} - не нужно!
   },
