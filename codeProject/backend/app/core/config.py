@@ -11,11 +11,11 @@ load_dotenv()
 class Settings(BaseSettings):
     # Database settings
     DATABASE_URL: str = Field(
-        default=os.getenv("DATABASE_URL", "postgresql://user:password@localhost/restaurant_db"),
+        default=os.getenv("DATABASE_URL", "sqlite:///./restaurant_db.sqlite3"),
         description="PostgreSQL connection URL"
     )
     ASYNC_DATABASE_URL: str = Field(
-        default=os.getenv("ASYNC_DATABASE_URL", "postgresql+asyncpg://user:password@localhost/restaurant_db"),
+        default=os.getenv("ASYNC_DATABASE_URL", "sqlite+aiosqlite:///./restaurant_db.sqlite3"),
         description="PostgreSQL async connection URL"
     )
 

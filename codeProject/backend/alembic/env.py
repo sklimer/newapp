@@ -24,7 +24,14 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 def get_url():
-    return settings.DATABASE_URL
+    # Use the sync database URL for alembic migrations
+    sync_url = settings.DATABASE_URL
+    # Convert asyncpg URL to regular postgresql URL if needed
+    if sync_url.startswith("sqlite+aiosqlite"):
+        sync_url = sync_url.replace("sqlite+aiosqlite", "sqlite")
+    elif sync_url.startswith("postgresql+asyncpg"):
+        sync_url = sync_url.replace("postgresql+asyncpg", "postgresql")
+    return sync_url
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
