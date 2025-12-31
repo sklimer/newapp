@@ -5,7 +5,10 @@ __pycache__/
 *.o
 *.obj
 *.out
-
+DATA/
+codeProject/.idea
+codeProject/frontend/node_modules
+codeProject/README.md
 # Dependencies
 venv/
 .venv/
