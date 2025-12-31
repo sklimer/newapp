@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user_from_telegram
 from app.models.users import User
 from app.schemas.users import UserResponse, UserUpdate
 
@@ -11,7 +11,7 @@ router = APIRouter()
 
 @router.get("/", response_model=UserResponse)
 async def get_profile(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_telegram),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -23,7 +23,7 @@ async def get_profile(
 @router.put("/", response_model=UserResponse)
 async def update_profile(
     user_update: UserUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_from_telegram),
     db: AsyncSession = Depends(get_db)
 ):
     """
