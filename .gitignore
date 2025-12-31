@@ -2,44 +2,65 @@
 # Compiled and build artifacts
 *.pyc
 __pycache__/
-*.o
-*.obj
-*.out
-DATA/
-codeProject/.idea
-codeProject/frontend/node_modules
-codeProject/README.md
+*.pyo
+*.pyd
+
 # Dependencies
-venv/
 .venv/
-node_modules/
-dist/
-build/
-target/
-.gradle/
-.mypy_cache/
-.pytest_cache/
+venv/
+env/
+.ENV/
+env.bak/
+venv.bak/
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
+*.swo
+*.bak
+*.cache
 
 # Environment
 .env
 .env.local
-*.env.*
+.env.*
+!.env.example
+!.env.sample
+!.env.local.example
+!.env.local.sample
 
 # Editors
 .vscode/
 .idea/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+Thumbs.db
 
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
+.coverage.*
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
 
-# System files
-.DS_Store
-Thumbs.db
+# Distribution / packaging
+.Python
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+*.zip
+*.tar.gz
+*.whl
+
+# Security and sensitive files
+*.pem
+*.key
+*.crt
+*.cert
 ```
