@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store/store';
 import RouterComponent from './router/Router';
 import Header from './components/Header';
+import TelegramAuth from './components/TelegramAuth';
 
 const App: React.FC = () => {
 //   const [isTelegramEnvironment, setIsTelegramEnvironment] = useState<boolean | null>(null);
@@ -83,18 +84,18 @@ const App: React.FC = () => {
 //     );
 //   }
 
-// Remove Telegram environment checks for development
-// Always render the app
- return (
+  return (
     <Provider store={store}>
-      <Router>
-        <div className="app">
-          <Header />
-          <main>
-            <RouterComponent />
-          </main>
-        </div>
-      </Router>
+      <TelegramAuth>
+        <Router>
+          <div className="app">
+            <Header />
+            <main>
+              <RouterComponent />
+            </main>
+          </div>
+        </Router>
+      </TelegramAuth>
     </Provider>
   );
 };
