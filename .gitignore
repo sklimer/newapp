@@ -4,40 +4,41 @@
 __pycache__/
 *.o
 *.obj
+*.so
+*.dll
+*.exe
+*.class
 *.out
-DATA/
-codeProject/.idea
-codeProject/frontend/node_modules
-codeProject/README.md
+
 # Dependencies
+node_modules/
 venv/
 .venv/
-node_modules/
-dist/
-build/
-target/
-.gradle/
-.mypy_cache/
-.pytest_cache/
+.env
+.env.local
+.env.*
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
-
-# Environment
-.env
-.env.local
-*.env.*
+*.swo
 
 # Editors
 .vscode/
 .idea/
 
 # Coverage
+.coverage
 coverage/
 htmlcov/
-.coverage
+
+# Build directories
+dist/
+build/
+target/
+.pytest_cache/
+.mypy_cache/
 
 # System files
 .DS_Store

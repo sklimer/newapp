@@ -12,6 +12,7 @@ from app.api.endpoints import (
     orders,
     payments,
     profile,
+    telegram_auth,
     users
 )
 
@@ -30,6 +31,5 @@ api_router.include_router(notification.router, prefix="/notification", tags=["no
 api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(business.router, prefix="/business", tags=["business"])
-api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
-api_router.include_router(cart.router, prefix="/cart", tags=["cart"])
+api_router.include_router(telegram_auth.router, prefix="/auth", tags=["telegram_auth"])

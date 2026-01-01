@@ -95,8 +95,11 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
     """
     # Check if request is coming from Telegram Web App
     if not is_running_in_telegram_web_app(request):
-        # If not in Telegram environment, return None without error
-        return None
+        # If not in Telegram environment, raise an exception
+        raise HTTPException(
+            status_code=400, 
+            detail="This application must be accessed through Telegram Web App"
+        )
 
     # Get init data from header or query parameter
     init_data = request.headers.get("x-telegram-web-app-init-data")
@@ -105,8 +108,11 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
         # Try to get from query parameters if not in header
         init_data = request.query_params.get("initData")
         if not init_data:
-            # If no init data in headers or query params, return None without error
-            return None
+            # If no init data in headers or query params, raise an exception
+            raise HTTPException(
+                status_code=400, 
+                detail="Missing Telegram init data"
+            )
 
     try:
         # Validate the init data
@@ -157,11 +163,13 @@ async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
             await db.refresh(db_user)
             return db_user
     except HTTPException:
-        # If there's a validation error (like invalid init data), return None
-        # Don't raise the exception to avoid breaking the main page
-        return None
+        # Re-raise HTTP exceptions (like validation errors)
+        raise
     except Exception as e:
         # Log the error for debugging
         logger.error(f"Unexpected error in get_or_create_user_from_telegram: {e}")
-        # For any other error, return None
-        return None
+        # Raise an HTTP exception for any other error
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Error processing Telegram authentication: {str(e)}"
+        )

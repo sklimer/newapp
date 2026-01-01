@@ -136,6 +136,9 @@ export const userApi = {
   getUserProfile: () => 
     apiClient.get('/users/profile'),
   
+  getTelegramUser: () => 
+    apiClient.get('/telegram/me'),
+  
   updateUserProfile: (profileData: any) => 
     apiClient.put('/users/profile', profileData),
   
