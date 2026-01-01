@@ -1,5 +1,9 @@
 ```
 # Compiled and build artifacts
+DATA/
+codeProject/.idea
+codeProject/frontend/node_modules
+codeProject/README.md
 *.pyc
 __pycache__/
 *.o

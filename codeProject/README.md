@@ -162,13 +162,17 @@ git merge origin/qwen-code-e80d5b88-adc3-4b70-a56d-3841336eab51 --no-ff
 # 5. Запушить
 git push origin master
 
-git commit -m "Merge qwen-code-e80d5b88-adc3-4b70-a56d-3841336eab51 branch"    
-
-
+# 6. в гитигнор
 DATA/
 codeProject/.idea
 codeProject/frontend/node_modules
 codeProject/README.md
+
+# 7. коммит
+git commit -m "Merge qwen-code-e80d5b88-adc3-4b70-a56d-3841336eab51 branch"    
+
+
+
 
 user:password
 

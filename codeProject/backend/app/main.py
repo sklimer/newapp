@@ -69,27 +69,7 @@ app.include_router(admin_router)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Корневой endpoint для проверки здоровья
-@app.get("/")
-async def root(request: Request, db: AsyncSession = Depends(get_db)):
-    # Проверяем, есть ли пользователь Telegram, и добавляем его при необходимости
-    print('DEBUG: сработал @app.get("/")')  # Дополнительный дебаг-лог
-    logger.info('сработал @app.get("/")')
-    try:
-        user = await get_or_create_user_from_telegram(request, db)
-        user_authenticated = user is not None
-        user_id = user.id if user else None
-    except Exception as e:
-        logger.error(f"Error in get_or_create_user_from_telegram: {e}")
-        user_authenticated = False
-        user_id = None
 
-    return {
-        "message": "Restaurant Telegram Mini App API",
-        "version": "1.0.0",
-        "docs": "/api/docs" if settings.DEBUG else None,
-        "user_authenticated": user_authenticated,
-        "user_id": user_id
-    }
 
 @app.get("/health")
 async def health_check():
