@@ -19,8 +19,7 @@ from app.api.api_docs import router as docs_router
 
 api_router = APIRouter()
 
-# Подключаем маршруты
-# api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+# Подключаем маршруты с новыми префиксами для v2
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(cart.router, prefix="/cart", tags=["cart"])
 api_router.include_router(menu.router, prefix="/menu", tags=["menu"])
