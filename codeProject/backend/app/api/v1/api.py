@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.endpoints import (
+from app.api.v1.endpoints import (
     admin,
     analytics,
     auth,

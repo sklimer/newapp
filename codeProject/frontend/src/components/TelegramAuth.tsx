@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { userApi } from '../api/api';
+import { userApi } from '../api/v1';
 
 interface TelegramAuthProps {
   children: React.ReactNode;

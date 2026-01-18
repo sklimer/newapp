@@ -4,26 +4,24 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from app.api.v1.api import api_router
-from app.api.endpoints.admin import router as admin_router
+from app.api.version_selector import register_api_versions, APIVersion
 from app.core.config import settings
 from app.core.database import async_engine
 from app.core.middleware import TelegramWebAppMiddleware
 from app.core.security import get_or_create_user_from_telegram
 from app.api.deps import get_db
 
-
-
 # Настройка логирования
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-level=logging.INFO,
-format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 # Create async session maker for lifespan
 AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,6 +34,7 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down application...")
     # Close engine when shutting down
     await async_engine.dispose()
+
 
 # Создание экземпляра FastAPI с lifespan
 app = FastAPI(
@@ -62,8 +61,8 @@ app.add_middleware(
 )
 
 # Подключение маршрутов
-app.include_router(api_router, prefix="/api/v1")
-app.include_router(admin_router)
+register_api_versions(app, enabled_versions=[APIVersion.V1, APIVersion.V2])
+
 
 # Подключение статических файлов (если нужно)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -81,6 +80,20 @@ async def health_check():
         "database": "async_engine_ready",  # Simplified for async approach
         "debug": settings.DEBUG
     }
+
+
+@app.get("/api/versions")
+async def get_api_versions():
+    """Return information about available API versions"""
+    return {
+        "versions": [
+            {"version": "v1", "status": "stable", "path": "/api/v1"},
+            {"version": "v2", "status": "stable", "path": "/api/v2"}
+        ],
+        "current_version": "v2",
+        "default_version": "v1"
+    }
+
 
 if __name__ == "__main__":
     uvicorn.run(
