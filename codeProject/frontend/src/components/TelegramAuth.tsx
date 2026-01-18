@@ -143,7 +143,7 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
 
     try {
       // Отправляем initData на сервер для аутентификации
-      const response = await userApi.getTelegramUser(initData);
+      const response = await userApi.get_current_user_from_telegram(initData);
 
       // Сохраняем сырой ответ
       const rawResponse = {
