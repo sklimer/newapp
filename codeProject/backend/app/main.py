@@ -4,9 +4,9 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
-from app.api.v1.api import api_router
+from app.api.version_selector import register_api_versions, APIVersion
 from app.api.endpoints.admin import router as admin_router
 from app.core.config import settings
 from app.core.database import async_engine
@@ -62,8 +62,7 @@ app.add_middleware(
 )
 
 # Подключение маршрутов
-app.include_router(api_router, prefix="/api/v1")
-app.include_router(admin_router)
+register_api_versions(app, enabled_versions=[APIVersion.V1, APIVersion.V2])
 
 # Подключение статических файлов (если нужно)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -80,6 +79,19 @@ async def health_check():
         "service": "restaurant-telegram-api",
         "database": "async_engine_ready",  # Simplified for async approach
         "debug": settings.DEBUG
+    }
+
+
+@app.get("/api/versions")
+async def get_api_versions():
+    """Return information about available API versions"""
+    return {
+        "versions": [
+            {"version": "v1", "status": "stable", "path": "/api/v1"},
+            {"version": "v2", "status": "stable", "path": "/api/v2"}
+        ],
+        "current_version": "v2",
+        "default_version": "v1"
     }
 
 if __name__ == "__main__":
