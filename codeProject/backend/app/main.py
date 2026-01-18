@@ -29,11 +29,11 @@ AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_co
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
     # Запуск приложения
-    logging.info("Starting application...")
+    logger.info("Startapplication...")
     # We're not using the database connection in lifespan since it's handled by dependency injection
     yield
     # Завершение работы
-    logging.info("Shutting down application...")
+    logger.info("Shutting down application...")
     # Close engine when shutting down
     await async_engine.dispose()
 

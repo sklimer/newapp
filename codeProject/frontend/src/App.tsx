@@ -89,14 +89,15 @@ const App: React.FC = () => {
   return (
     <Provider store={store}>
       <Router>
-        <TelegramAuth>
+
           <div className="app">
             <Header />
             <main>
               <RouterComponent />
+              <TelegramAuth />
             </main>
           </div>
-        </TelegramAuth>
+
       </Router>
     </Provider>
   );

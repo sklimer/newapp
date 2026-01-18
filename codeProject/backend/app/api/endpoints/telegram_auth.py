@@ -16,7 +16,7 @@ level=logging.INFO,
 format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
-@router.get("/me", response_model=UserResponse)
+@router.get("/", response_model=UserResponse)
 async def get_current_user_from_telegram(
     request: Request,
     db: AsyncSession = Depends(get_db)
@@ -24,7 +24,7 @@ async def get_current_user_from_telegram(
     """
     Get current user from Telegram Web App data, creating if doesn't exist
     """
-    logger.info("get_current_user_from_telegram")
+    logging.info("get_current_user_from_telegram")
     user = await get_or_create_user_from_telegram(request, db)
     logger.info(f"get_current_user_from_telegram= {user}")
     if user is None:
