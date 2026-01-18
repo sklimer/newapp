@@ -16,6 +16,7 @@ class User(Base):
     username: Optional[str] = Column(String, unique=True, index=True, nullable=True)
     first_name: Optional[str] = Column(String, nullable=True)
     last_name: Optional[str] = Column(String, nullable=True)
+    language_code: Optional[str] = Column(String, nullable=True)  # Языковой код пользователя из Telegram
     phone_number: Optional[str] = Column(String, index=True, nullable=True)
     email: Optional[str] = Column(String, index=True, nullable=True)
     address_lat: Optional[Decimal] = Column(Numeric(precision=9, scale=6), nullable=True)
