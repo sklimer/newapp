@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userApi } from '../api/v1';
 
@@ -6,7 +6,6 @@ interface TelegramAuthProps {
   children: React.ReactNode;
 }
 
-// Интерфейс для данных пользователя Telegram
 interface TelegramUserData {
   id: number;
   first_name: string;
@@ -15,49 +14,36 @@ interface TelegramUserData {
   photo_url?: string;
   auth_date: number;
   hash: string;
+  language_code?: string;
+  is_premium?: boolean;
 }
 
-// Расширенный интерфейс для initDataUnsafe
-interface InitDataUnsafe {
+interface ParsedInitData {
   query_id?: string;
-  user?: {
-    id: number;
-    first_name: string;
-    last_name?: string;
-    username?: string;
-    language_code?: string;
-    is_premium?: boolean;
-    photo_url?: string;
-  };
-  receiver?: {
-    id: number;
-    first_name: string;
-    username?: string;
-  };
-  chat?: {
-    id: number;
-    type: string;
-    title?: string;
-  };
-  chat_type?: string;
-  chat_instance?: string;
-  start_param?: string;
-  can_send_after?: number;
-  auth_date: number;
-  hash: string;
+  user?: TelegramUserData;
+  auth_date?: number;
+  hash?: string;
+  [key: string]: any;
 }
 
-// Интерфейс для расширения глобального window объекта
 declare global {
   interface Window {
     telegramAuthData?: {
-      initData?: string;
-      initDataUnsafe?: InitDataUnsafe;
-      parsedInitData?: Record<string, any>;
+      rawResponse?: any;
       userData?: TelegramUserData;
       authStatus?: string;
       errorMessage?: string;
       timestamp?: string;
+      initDataRaw?: string;
+      initDataParsed?: ParsedInitData;
+    };
+    Telegram?: {
+      WebApp?: {
+        initData?: string;
+        initDataUnsafe?: any;
+        platform?: string;
+        version?: string;
+      };
     };
   }
 }
@@ -67,216 +53,369 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [userData, setUserData] = useState<TelegramUserData | null>(null);
   const [apiResponse, setApiResponse] = useState<any>(null);
-  const [isTelegramEnv, setIsTelegramEnv] = useState<boolean>(false);
-  const [rawWindowData, setRawWindowData] = useState<string>('');
+  const [initDataRaw, setInitDataRaw] = useState<string>('');
+  const [initDataParsed, setInitDataParsed] = useState<ParsedInitData | null>(null);
+  const [telegramEnvInfo, setTelegramEnvInfo] = useState<string>('');
   const navigate = useNavigate();
 
-  // Получаем данные из Telegram WebApp
-  const initData = window.Telegram?.WebApp?.initData || '';
-  const initDataUnsafe = window.Telegram?.WebApp?.initDataUnsafe || null;
+  // useRef для предотвращения повторных вызовов
+  const hasRun = useRef(false);
+  const isChecking = useRef(false);
 
-  // Парсим строку initData для детального отображения
-  const parseInitData = useCallback((data: string) => {
-    if (!data) return {};
+  // Функция ручного получения initData
+  const getInitDataManually = useCallback((): { raw: string; parsed: ParsedInitData | null } => {
+    console.log('🔍 getInitDataManually вызван');
 
-    const params = new URLSearchParams(data);
-    const parsed: Record<string, any> = {};
+    let rawData = '';
+    let parsedData: ParsedInitData | null = null;
 
-    params.forEach((value, key) => {
-      // Пытаемся распарсить JSON если это объект
-      if (value.startsWith('{') || value.startsWith('[')) {
-        try {
-          parsed[key] = JSON.parse(value);
-        } catch {
-          parsed[key] = value;
-        }
-      } else {
-        parsed[key] = value;
+    // Способ 1: Из Telegram WebApp API (если доступен)
+    if (window.Telegram?.WebApp?.initData) {
+      rawData = window.Telegram.WebApp.initData;
+      console.log('📱 Получено через Telegram.WebApp.initData');
+
+      // Также получаем готовый объект для отладки
+      if (window.Telegram.WebApp.initDataUnsafe?.user) {
+        parsedData = {
+          user: window.Telegram.WebApp.initDataUnsafe.user,
+          auth_date: window.Telegram.WebApp.initDataUnsafe.auth_date,
+          hash: window.Telegram.WebApp.initDataUnsafe.hash,
+          query_id: window.Telegram.WebApp.initDataUnsafe.query_id
+        };
       }
-    });
+    }
 
-    return parsed;
+    // Способ 2: Из URL hash параметров (основной способ для Mini Apps)
+    if (!rawData) {
+      try {
+        const urlHash = window.location.hash.slice(1);
+        console.log('🔗 URL Hash:', urlHash.substring(0, 100) + '...');
+
+        if (urlHash) {
+          const params = new URLSearchParams(urlHash);
+          rawData = params.get('tgWebAppData') || '';
+
+          if (rawData) {
+            console.log('🌐 Получено из URL параметров (tgWebAppData)');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Ошибка при получении данных из URL:', error);
+      }
+    }
+
+    // Способ 3: Из URL search параметров (альтернативный вариант)
+    if (!rawData) {
+      try {
+        const urlSearch = window.location.search.slice(1);
+        console.log('🔍 URL Search:', urlSearch);
+
+        if (urlSearch) {
+          const params = new URLSearchParams(urlSearch);
+          rawData = params.get('tgWebAppData') || params.get('initData') || '';
+
+          if (rawData) {
+            console.log('📝 Получено из search параметров');
+          }
+        }
+      } catch (error) {
+        console.error('❌ Ошибка при получении данных из search:', error);
+      }
+    }
+
+    // Парсинг raw данных вручную
+    if (rawData && !parsedData) {
+      parsedData = parseInitDataString(rawData);
+    }
+
+    console.log('🎯 ИТОГО rawData:', rawData ? `Есть (${rawData.length} chars)` : 'НЕТ');
+    return { raw: rawData, parsed: parsedData };
   }, []);
+
+  // Функция парсинга строки initData
+  const parseInitDataString = useCallback((initDataString: string): ParsedInitData | null => {
+    try {
+      const params = new URLSearchParams(initDataString);
+      const result: ParsedInitData = {};
+
+      for (const [key, value] of params.entries()) {
+        if (key === 'user' || key === 'receiver' || key === 'chat') {
+          try {
+            result[key] = JSON.parse(decodeURIComponent(value));
+          } catch (e) {
+            console.warn(`Не удалось распарсить ${key}:`, e);
+            result[key] = value;
+          }
+        } else if (key === 'auth_date') {
+          result[key] = parseInt(value, 10);
+        } else {
+          result[key] = value;
+        }
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Ошибка парсинга initData:', error);
+      return null;
+    }
+  }, []);
+
+  // Функция проверки окружения Telegram
+  const checkTelegramEnvironment = useCallback((): boolean => {
+    console.log('🔍 checkTelegramEnvironment вызван');
+
+    // Проверка 1: Наличие Telegram.WebApp объекта
+    if (window.Telegram?.WebApp) {
+      const webApp = window.Telegram.WebApp;
+      setTelegramEnvInfo(`Telegram WebApp v${webApp.version}, Platform: ${webApp.platform}`);
+      console.log('📱 Telegram.WebApp найден');
+      return true;
+    }
+
+    console.log('📱 Telegram.WebApp НЕ найден');
+
+    // Проверка 2: Наличие initData в URL
+    const { raw } = getInitDataManually();
+    if (raw) {
+      setTelegramEnvInfo('Telegram Mini App (данные в URL)');
+      console.log('🌐 Telegram данные в URL найдены');
+      return true;
+    }
+
+    // Проверка 3: User Agent Telegram
+    const userAgent = navigator.userAgent.toLowerCase();
+    console.log('🤖 User Agent:', userAgent);
+
+    const isTelegramWebView = userAgent.includes('telegram') ||
+                              userAgent.includes('webview') ||
+                              /telegram|twa/.test(window.location.href);
+
+    if (isTelegramWebView) {
+      setTelegramEnvInfo('Telegram WebView обнаружен');
+      console.log('🌐 Telegram WebView обнаружен');
+      return true;
+    }
+
+    console.log('❌ Telegram окружение не обнаружено');
+    return false;
+  }, [getInitDataManually]);
 
   // Функция для сохранения данных в window объект
   const saveToWindow = useCallback((data: any) => {
-    const parsedData = parseInitData(initData);
-
     window.telegramAuthData = {
-      initData,
-      initDataUnsafe: initDataUnsafe || undefined,
-      parsedInitData: parsedData,
+      rawResponse: data,
       userData: userData || undefined,
       authStatus,
       errorMessage,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      initDataRaw,
+      initDataParsed: initDataParsed || undefined
     };
-
-    // Обновляем состояние для отображения сырых данных
-    setRawWindowData(JSON.stringify(window.telegramAuthData, null, 2));
-
-    // Также выводим в консоль для удобства
-    console.log('Telegram Auth Data saved to window:', window.telegramAuthData);
-    console.log('initData string:', initData);
-    console.log('initDataUnsafe object:', initDataUnsafe);
-  }, [authStatus, errorMessage, userData, initData, initDataUnsafe, parseInitData]);
+    console.log('💾 Данные сохранены в window.telegramAuthData');
+  }, [authStatus, errorMessage, userData, initDataRaw, initDataParsed]);
 
   const checkTelegramAuth = useCallback(async () => {
-    // Проверяем, находимся ли мы в среде Telegram Web App
-    const telegramCheck = !!(window as any).Telegram?.WebApp;
-    setIsTelegramEnv(telegramCheck);
+    console.log('🚀 checkTelegramAuth ВЫЗВАН');
 
-    if (!telegramCheck) {
-      setAuthStatus('not_telegram');
-      setErrorMessage('This application must be opened through Telegram');
-      saveToWindow({ error: 'Not Telegram environment' });
+    if (isChecking.current) {
+      console.log('⏸️ Уже проверяем, пропускаем');
       return;
     }
 
-    // Если нет initData, но есть Telegram.WebApp
-    if (!initData) {
-      setAuthStatus('error');
-      setErrorMessage('No initData received from Telegram. Try reopening the app.');
-      saveToWindow({ error: 'No initData' });
-      return;
-    }
+    isChecking.current = true;
 
     try {
-      // Отправляем initData на сервер для аутентификации
-      const response = await userApi.get_current_user_from_telegram(initData);
+      // Получаем данные вручную
+      const { raw, parsed } = getInitDataManually();
+      setInitDataRaw(raw || '');
+      setInitDataParsed(parsed);
 
-      // Сохраняем сырой ответ
-      const rawResponse = {
-        status: response.status,
-        statusText: response.statusText,
-        data: response.data,
-        headers: response.headers,
-        config: {
-          url: response.config?.url,
-          method: response.config?.method,
-          baseURL: response.config?.baseURL
-        },
-        timestamp: new Date().toISOString()
-      };
+      console.log('📦 Получен initData:', raw ? `Да (${raw.length} chars)` : 'Нет');
 
-      // ВЫВОД response НА ЭКРАН - сохраняем данные для отображения
-      setApiResponse(rawResponse);
-
-      // Сохраняем в window объект
-      saveToWindow(rawResponse);
-
-      if (response.status === 200) {
-        // Предполагаем, что данные пользователя находятся в response.data
-        setUserData(response.data);
-        setAuthStatus('showing_response'); // Показываем ответ на странице
-      } else {
-        setAuthStatus('error');
-        setErrorMessage(`Authentication failed with status: ${response.status}`);
-      }
-    } catch (error: any) {
-      console.error('Telegram auth error:', error);
-
-      const errorData = {
-        name: error.name,
-        message: error.message,
-        response: error.response ? {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          headers: error.response.headers
-        } : undefined,
-        timestamp: new Date().toISOString()
-      };
-
-      // Сохраняем ошибку в window
-      saveToWindow(errorData);
-
-      // Проверяем, связана ли ошибка с Telegram
-      if (error.response?.status === 400 && error.response?.data?.detail?.includes('Telegram')) {
+      if (!raw) {
+        console.log('❌ Нет initData, показываем ошибку');
         setAuthStatus('not_telegram');
-        setErrorMessage(error.response.data.detail);
-      } else if (error.response?.status === 401) {
-        setAuthStatus('error');
-        setErrorMessage('Authentication failed. Invalid or expired initData.');
-      } else {
-        setAuthStatus('error');
-        setErrorMessage('Authentication error. Please try opening the app through Telegram.');
+        setErrorMessage('Не удалось получить данные аутентификации');
+        saveToWindow({ error: 'No initData' });
+        return;
       }
+
+      console.log('✅ Есть initData, отправляю на сервер...');
+
+      try {
+        // Отправляем initData на сервер для проверки
+        const response = await userApi.verifyTelegramInitData(raw);
+        console.log('📨 Ответ сервера получен:', response.status);
+
+        const rawResponse = {
+          status: response.status,
+          statusText: response.statusText,
+          data: response.data,
+          headers: response.headers,
+          config: {
+            url: response.config?.url,
+            method: response.config?.method,
+            baseURL: response.config?.baseURL
+          },
+          timestamp: new Date().toISOString()
+        };
+
+        setApiResponse(rawResponse);
+        saveToWindow(rawResponse);
+
+        if (response.status === 200 || response.status === 201) {
+          console.log('✅ Аутентификация успешна');
+          if (response.data.user) {
+            setUserData(response.data.user);
+          } else if (parsed?.user) {
+            setUserData(parsed.user);
+          }
+          setAuthStatus('showing_response');
+        } else {
+          console.log('❌ Аутентификация не удалась:', response.status);
+          setAuthStatus('error');
+          setErrorMessage(`Аутентификация не удалась: ${response.status}`);
+        }
+      } catch (error: any) {
+        console.error('❌ Ошибка при отправке запроса:', error);
+
+        const errorData = {
+          name: error.name,
+          message: error.message,
+          response: error.response ? {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            headers: error.response.headers
+          } : undefined,
+          initDataRaw: raw,
+          initDataLength: raw.length,
+          urlHash: window.location.hash.substring(0, 100),
+          timestamp: new Date().toISOString()
+        };
+
+        saveToWindow(errorData);
+
+        if (error.response?.status === 401) {
+          setAuthStatus('error');
+          setErrorMessage('Неверные данные аутентификации Telegram');
+        } else if (error.response?.status === 400) {
+          setAuthStatus('error');
+          setErrorMessage('Ошибка в данных Telegram. Перезагрузите приложение.');
+        } else if (!error.response) {
+          setAuthStatus('error');
+          setErrorMessage('Ошибка соединения с сервером. Проверьте интернет.');
+        } else {
+          setAuthStatus('error');
+          setErrorMessage('Неизвестная ошибка аутентификации');
+        }
+      }
+    } finally {
+      isChecking.current = false;
     }
-  }, [saveToWindow, initData]);
+  }, [getInitDataManually, saveToWindow]);
 
+  // ЕДИНСТВЕННЫЙ useEffect - выполняется один раз
   useEffect(() => {
-    checkTelegramAuth();
-  }, [checkTelegramAuth]);
+    console.log('=== TELEGRAM AUTH КОМПОНЕНТ ===');
+    console.log('1. Компонент монтируется');
 
-  // Компонент для отображения данных ответа
-  const ResponseDisplay = () => {
-    const parsedInitData = parseInitData(initData);
+    if (hasRun.current) {
+      console.log('⏭️ useEffect уже выполнялся, пропускаем');
+      return;
+    }
 
-    return (
+    hasRun.current = true;
+    console.log('🔄 Первый вызов useEffect');
+
+    const init = async () => {
+      console.log('🔐 Начинаю проверку аутентификации...');
+      await checkTelegramAuth();
+    };
+
+    // Небольшая задержка для стабилизации
+    const timer = setTimeout(init, 100);
+
+    return () => {
+      clearTimeout(timer);
+      console.log('🧹 Очистка useEffect');
+    };
+  }, [checkTelegramAuth]); // Оставляем зависимость, но защищаемся hasRun
+
+  // Компонент для отображения данных
+  const ResponseDisplay = () => (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      backgroundColor: '#f5f5f5',
+      color: '#333',
+      textAlign: 'center',
+      padding: '20px',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#007bff' }}>
+        Telegram Authentication ✅
+      </h1>
+
+      {/* Информация о полученных данных */}
       <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        backgroundColor: '#f5f5f5',
-        color: '#333',
-        textAlign: 'center',
-        padding: '20px',
-        fontFamily: 'Arial, sans-serif'
+        backgroundColor: 'white',
+        padding: '25px',
+        borderRadius: '10px',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+        marginBottom: '25px',
+        width: '95%',
+        maxWidth: '800px',
+        textAlign: 'left'
       }}>
-        <h1 style={{ fontSize: '24px', marginBottom: '20px', color: '#007bff' }}>
-          Telegram Authentication Successful! ✅
-        </h1>
+        <h2 style={{ fontSize: '20px', marginBottom: '15px', color: '#17a2b8' }}>
+          Полученные initData:
+        </h2>
 
-        {/* Кнопки для доступа к данным */}
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          justifyContent: 'center'
-        }}>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(initData);
-              alert('initData скопирована в буфер обмена!');
-            }}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#17a2b8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            📋 Скопировать initData
-          </button>
-
-          <button
-            onClick={() => {
-              console.log('initData:', initData);
-              console.log('initDataUnsafe:', initDataUnsafe);
-              alert('Данные выведены в консоль. Откройте DevTools (F12)');
-            }}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            📝 Вывести в консоль
-          </button>
+        <div style={{ marginBottom: '15px' }}>
+          <p><strong>Окружение:</strong> {telegramEnvInfo}</p>
+          <p><strong>Длина данных:</strong> {initDataRaw.length} символов</p>
+          <p><strong>Способ получения:</strong> {window.Telegram?.WebApp?.initData ? 'Telegram.WebApp API' : 'URL параметры'}</p>
         </div>
 
-        {/* Секция initData */}
+        <h3 style={{ fontSize: '18px', marginBottom: '10px', color: '#6c757d' }}>Сырая строка (первые 100 символов):</h3>
+        <div style={{
+          backgroundColor: '#e9ecef',
+          padding: '15px',
+          borderRadius: '6px',
+          fontSize: '14px',
+          fontFamily: 'monospace',
+          wordBreak: 'break-all',
+          marginBottom: '15px'
+        }}>
+          {initDataRaw.substring(0, 100)}...
+        </div>
+
+        <button
+          onClick={() => {
+            console.log('Full initDataRaw:', initDataRaw);
+            console.log('Parsed initData:', initDataParsed);
+            alert('Данные выведены в консоль');
+          }}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          📝 Вывести в консоль
+        </button>
+      </div>
+
+      {/* Пользовательские данные */}
+      {userData && (
         <div style={{
           backgroundColor: 'white',
           padding: '25px',
@@ -287,281 +426,121 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
           maxWidth: '800px',
           textAlign: 'left'
         }}>
-          <h2 style={{
-            fontSize: '20px',
-            marginBottom: '15px',
-            color: '#dc3545',
-            borderBottom: '2px solid #dc3545',
-            paddingBottom: '5px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            📦 initData (строка для сервера)
+          <h2 style={{ fontSize: '20px', marginBottom: '15px', color: '#28a745' }}>
+            Данные пользователя:
           </h2>
 
-          <div style={{
-            backgroundColor: '#f8f9fa',
-            padding: '15px',
-            borderRadius: '6px',
-            marginBottom: '15px',
-            fontSize: '14px',
-            wordBreak: 'break-all',
-            fontFamily: 'monospace',
-            whiteSpace: 'pre-wrap',
-            border: '1px solid #dee2e6'
-          }}>
-            {initData || 'Нет данных'}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+            <div>
+              <strong>🆔 ID:</strong>
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{userData.id}</div>
+            </div>
+            <div>
+              <strong>👤 Имя:</strong>
+              <div style={{ fontSize: '18px', fontWeight: 'bold' }}>{userData.first_name}</div>
+            </div>
+            {userData.last_name && (
+              <div>
+                <strong>👥 Фамилия:</strong>
+                <div style={{ fontSize: '18px' }}>{userData.last_name}</div>
+              </div>
+            )}
+            {userData.username && (
+              <div>
+                <strong>🔗 Username:</strong>
+                <div style={{ fontSize: '18px' }}>@{userData.username}</div>
+              </div>
+            )}
+            {userData.language_code && (
+              <div>
+                <strong>🌐 Язык:</strong>
+                <div style={{ fontSize: '18px' }}>{userData.language_code}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Ответ от API */}
+      {apiResponse && (
+        <div style={{
+          backgroundColor: 'white',
+          padding: '25px',
+          borderRadius: '10px',
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          marginBottom: '25px',
+          width: '95%',
+          maxWidth: '800px',
+          textAlign: 'left'
+        }}>
+          <h2 style={{ fontSize: '20px', marginBottom: '15px', color: '#6f42c1' }}>
+            Ответ от сервера:
+          </h2>
+
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{
+              display: 'inline-block',
+              padding: '5px 10px',
+              backgroundColor: apiResponse.status === 200 ? '#28a745' : '#dc3545',
+              color: 'white',
+              borderRadius: '4px',
+              fontWeight: 'bold'
+            }}>
+              Status: {apiResponse.status} {apiResponse.statusText}
+            </div>
           </div>
 
-          <h3 style={{ fontSize: '18px', marginBottom: '10px', color: '#495057' }}>
-            Парсинг initData:
-          </h3>
-          <div style={{
+          <h3 style={{ fontSize: '18px', marginBottom: '10px' }}>Данные:</h3>
+          <pre style={{
             backgroundColor: '#2b3035',
             color: '#f8f9fa',
             padding: '15px',
             borderRadius: '6px',
+            fontSize: '14px',
             maxHeight: '300px',
-            overflowY: 'auto',
-            fontSize: '13px',
-            fontFamily: 'monospace'
+            overflowY: 'auto'
           }}>
-            {JSON.stringify(parsedInitData, null, 2)}
-          </div>
+            {JSON.stringify(apiResponse.data || {}, null, 2)}
+          </pre>
         </div>
+      )}
 
-        {/* Секция initDataUnsafe */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '25px',
-          borderRadius: '10px',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          marginBottom: '25px',
-          width: '95%',
-          maxWidth: '800px',
-          textAlign: 'left'
-        }}>
-          <h2 style={{
-            fontSize: '20px',
-            marginBottom: '15px',
-            color: '#28a745',
-            borderBottom: '2px solid #28a745',
-            paddingBottom: '5px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            🔓 initDataUnsafe (объект для фронтенда)
-            <span style={{
-              fontSize: '12px',
-              backgroundColor: '#ffc107',
-              color: '#212529',
-              padding: '2px 8px',
-              borderRadius: '10px'
-            }}>
-              Не для проверки на сервере
-            </span>
-          </h2>
+      <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
+        <button
+          onClick={() => setAuthStatus('authenticated')}
+          style={{
+            padding: '12px 30px',
+            backgroundColor: '#28a745',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}
+        >
+          Продолжить
+        </button>
 
-          {initDataUnsafe ? (
-            <div style={{
-              backgroundColor: '#f8f9fa',
-              padding: '20px',
-              borderRadius: '6px',
-              border: '1px solid #dee2e6'
-            }}>
-              {/* Данные пользователя */}
-              {initDataUnsafe.user && (
-                <div style={{ marginBottom: '20px' }}>
-                  <h3 style={{ fontSize: '18px', marginBottom: '15px', color: '#495057' }}>👤 Пользователь:</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                    <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                      <strong>🆔 ID:</strong>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#495057', marginTop: '5px' }}>
-                        {initDataUnsafe.user.id}
-                      </div>
-                    </div>
-
-                    <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                      <strong>👤 Имя:</strong>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#495057', marginTop: '5px' }}>
-                        {initDataUnsafe.user.first_name}
-                      </div>
-                    </div>
-
-                    {initDataUnsafe.user.last_name && (
-                      <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                        <strong>👥 Фамилия:</strong>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#495057', marginTop: '5px' }}>
-                          {initDataUnsafe.user.last_name}
-                        </div>
-                      </div>
-                    )}
-
-                    {initDataUnsafe.user.username && (
-                      <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                        <strong>🔗 Username:</strong>
-                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#495057', marginTop: '5px' }}>
-                          @{initDataUnsafe.user.username}
-                        </div>
-                      </div>
-                    )}
-
-                    {initDataUnsafe.user.language_code && (
-                      <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                        <strong>🌐 Язык:</strong>
-                        <div style={{ fontSize: '16px', color: '#6c757d', marginTop: '5px' }}>
-                          {initDataUnsafe.user.language_code}
-                        </div>
-                      </div>
-                    )}
-
-                    {initDataUnsafe.user.is_premium !== undefined && (
-                      <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                        <strong>⭐ Premium:</strong>
-                        <div style={{ fontSize: '16px', color: initDataUnsafe.user.is_premium ? '#ff6b6b' : '#6c757d', marginTop: '5px' }}>
-                          {initDataUnsafe.user.is_premium ? 'Да' : 'Нет'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Дополнительные данные */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                {initDataUnsafe.query_id && (
-                  <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                    <strong>🔑 Query ID:</strong>
-                    <div style={{ fontSize: '14px', fontFamily: 'monospace', wordBreak: 'break-all', color: '#495057', marginTop: '5px' }}>
-                      {initDataUnsafe.query_id}
-                    </div>
-                  </div>
-                )}
-
-                {initDataUnsafe.chat_type && (
-                  <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                    <strong>💬 Тип чата:</strong>
-                    <div style={{ fontSize: '16px', color: '#495057', marginTop: '5px' }}>
-                      {initDataUnsafe.chat_type}
-                    </div>
-                  </div>
-                )}
-
-                {initDataUnsafe.chat_instance && (
-                  <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                    <strong>💬 Chat Instance:</strong>
-                    <div style={{ fontSize: '14px', fontFamily: 'monospace', wordBreak: 'break-all', color: '#495057', marginTop: '5px' }}>
-                      {initDataUnsafe.chat_instance}
-                    </div>
-                  </div>
-                )}
-
-                {initDataUnsafe.start_param && (
-                  <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                    <strong>🚀 Start Param:</strong>
-                    <div style={{ fontSize: '14px', fontFamily: 'monospace', wordBreak: 'break-all', color: '#495057', marginTop: '5px' }}>
-                      {initDataUnsafe.start_param}
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                  <strong>📅 Auth Date:</strong>
-                  <div style={{ fontSize: '14px', color: '#6c757d', marginTop: '5px' }}>
-                    {new Date(initDataUnsafe.auth_date * 1000).toLocaleString()}
-                  </div>
-                </div>
-
-                <div style={{ padding: '12px', backgroundColor: 'white', borderRadius: '5px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                  <strong>🔐 Hash:</strong>
-                  <div style={{ fontSize: '12px', fontFamily: 'monospace', wordBreak: 'break-all', color: '#6c757d', marginTop: '5px' }}>
-                    {initDataUnsafe.hash.substring(0, 30)}...
-                  </div>
-                </div>
-              </div>
-
-              {/* Полный объект */}
-              <div style={{ marginTop: '20px' }}>
-                <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#6c757d' }}>Полный объект initDataUnsafe:</h3>
-                <pre style={{
-                  backgroundColor: '#2b3035',
-                  color: '#f8f9fa',
-                  padding: '15px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  fontFamily: 'monospace'
-                }}>
-                  {JSON.stringify(initDataUnsafe, null, 2)}
-                </pre>
-              </div>
-            </div>
-          ) : (
-            <div style={{
-              padding: '20px',
-              backgroundColor: '#fff3cd',
-              color: '#856404',
-              borderRadius: '6px',
-              textAlign: 'center'
-            }}>
-              Нет данных в initDataUnsafe
-            </div>
-          )}
-        </div>
-
-        {/* Остальные секции остаются без изменений */}
-        {/* (Секция User Information, Full API Response Details) */}
-
-        <div style={{ display: 'flex', gap: '15px', marginTop: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button
-            onClick={() => setAuthStatus('authenticated')}
-            style={{
-              padding: '12px 30px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              transition: 'background-color 0.3s',
-              minWidth: '200px'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#218838'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#28a745'}
-          >
-            🚀 Continue to Application
-          </button>
-
-          <button
-            onClick={() => navigate('/')}
-            style={{
-              padding: '12px 30px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '16px',
-              transition: 'background-color 0.3s',
-              minWidth: '200px'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#5a6268'}
-            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#6c757d'}
-          >
-            ↩️ Back to Home
-          </button>
-        </div>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            padding: '12px 30px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '16px'
+          }}
+        >
+          Назад
+        </button>
       </div>
-    );
-  };
+    </div>
+  );
 
-  // Остальной код компонента остается без изменений...
-  // (loading state, error state, etc.)
-
+  // Остальные состояния
   if (authStatus === 'checking') {
     return (
       <div style={{
@@ -620,60 +599,48 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
             fontSize: '60px',
             marginBottom: '15px'
           }}>⚠️</div>
-          <h1 style={{ fontSize: '28px', marginBottom: '15px', color: '#dc3545' }}>Telegram Required</h1>
+          <h1 style={{ fontSize: '28px', marginBottom: '15px', color: '#dc3545' }}>Ошибка аутентификации</h1>
           <p style={{ fontSize: '18px', marginBottom: '15px', maxWidth: '500px' }}>
-            {errorMessage || 'This application needs to be opened through Telegram.'}
+            {errorMessage}
           </p>
         </div>
 
-        {/* Показываем initData даже при ошибке */}
-        {initData && (
-          <div style={{
-            marginTop: '20px',
-            padding: '20px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
-            maxWidth: '500px',
-            fontSize: '14px',
-            textAlign: 'left'
-          }}>
-            <h3 style={{ fontSize: '16px', marginBottom: '10px', color: '#495057' }}>Полученные данные:</h3>
-            <div style={{
-              backgroundColor: '#e9ecef',
-              padding: '10px',
-              borderRadius: '4px',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              wordBreak: 'break-all',
-              maxHeight: '150px',
-              overflowY: 'auto'
-            }}>
-              initData: {initData.substring(0, 100)}...
-            </div>
-            {initDataUnsafe && (
-              <div style={{ marginTop: '10px' }}>
-                <div style={{ fontSize: '12px', color: '#6c757d' }}>
-                  Пользователь: {initDataUnsafe.user?.first_name} (ID: {initDataUnsafe.user?.id})
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div style={{ marginTop: '30px', padding: '15px', backgroundColor: '#e9ecef', borderRadius: '6px', fontSize: '14px' }}>
-          <p><strong>Environment:</strong> {window.Telegram?.WebApp ? 'Telegram WebApp' : 'Regular Browser'}</p>
-          <p><strong>initData available:</strong> {initData ? 'Yes' : 'No'}</p>
-          {window.telegramAuthData && (
-            <div style={{ marginTop: '10px', padding: '10px', backgroundColor: '#dc3545', color: 'white', borderRadius: '4px' }}>
-              <p><strong>Debug Data:</strong> Open DevTools and type <code>window.telegramAuthData</code></p>
-            </div>
-          )}
+        <div style={{
+          marginTop: '20px',
+          padding: '20px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          maxWidth: '500px',
+          fontSize: '15px',
+          textAlign: 'left'
+        }}>
+          <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Информация о среде:</p>
+          <p>Telegram.WebApp доступен: {window.Telegram?.WebApp ? 'Да' : 'Нет'}</p>
+          <p>Получено initData: {initDataRaw ? 'Да (' + initDataRaw.length + ' символов)' : 'Нет'}</p>
+          <p>URL hash: {window.location.hash.substring(0, 50)}...</p>
+          <p>Окружение: {telegramEnvInfo}</p>
         </div>
+
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            marginTop: '30px',
+            padding: '12px 24px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '16px'
+          }}
+        >
+          Попробовать снова
+        </button>
       </div>
     );
   }
 
-  // If authenticated, render children
+  // Если authenticated, рендерим детей
   return <>{children}</>;
 };
 

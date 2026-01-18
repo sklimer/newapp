@@ -7,6 +7,24 @@ import Header from './components/Header';
 import TelegramAuth from './components/TelegramAuth';
 
 const App: React.FC = () => {
+  return (
+    <Provider store={store}>
+
+      <Router>
+
+        <div className="app">
+          <Header />
+
+          <main>
+<RouterComponent />
+          </main>
+        </div>
+      </Router>
+    </Provider>
+  );
+};
+
+export default App;
 //   const [isTelegramEnvironment, setIsTelegramEnvironment] = useState<boolean | null>(null);
 //
 //   useEffect(() => {
@@ -86,21 +104,21 @@ const App: React.FC = () => {
 
 // Remove Telegram environment checks for development
 // Always render the app
-  return (
-    <Provider store={store}>
-      <Router>
-
-          <div className="app">
-            <Header />
-            <main>
-              <RouterComponent />
-              <TelegramAuth />
-            </main>
-          </div>
-
-      </Router>
-    </Provider>
-  );
-};
-
-export default App;
+//   return (
+//     <Provider store={store}>
+//       <Router>
+//
+//           <div className="app">
+//             <Header />
+//             <main>
+//               <RouterComponent />
+//
+//             </main>
+//           </div>
+//
+//       </Router>
+//     </Provider>
+//   );
+// };
+//
+// export default App;

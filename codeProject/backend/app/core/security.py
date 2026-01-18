@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 import jwt
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -89,87 +89,106 @@ def require_telegram_web_app():
     return check_telegram_environment
 
 
-async def get_or_create_user_from_telegram(request: Request, db: AsyncSession):
+async def get_or_create_user_from_telegram(
+        telegram_user_data: Dict[str, Any],
+        db: AsyncSession
+):
     """
     Get or create user from Telegram data
+
+    Args:
+        telegram_user_data: Dictionary with Telegram user data from validated initData
+        db: Database session
+
+    Returns:
+        User object or None
     """
-    # Check if request is coming from Telegram Web App
-    if not is_running_in_telegram_web_app(request):
-        # If not in Telegram environment, raise an exception
-        raise HTTPException(
-            status_code=400, 
-            detail="This application must be accessed through Telegram Web App"
-        )
-
-    # Get init data from header or query parameter
-    init_data = request.headers.get("x-telegram-web-app-init-data")
-    logger.info(f'sec init_data= {str(init_data)}')
-    if not init_data:
-        # Try to get from query parameters if not in header
-        init_data = request.query_params.get("initData")
-        if not init_data:
-            # If no init data in headers or query params, raise an exception
-            raise HTTPException(
-                status_code=400, 
-                detail="Missing Telegram init data"
-            )
-
     try:
-        # Validate the init data
-        validate_telegram_init_data(init_data)
+        # Validate required Telegram user data
+        if not telegram_user_data or 'id' not in telegram_user_data:
+            logger.error("Missing Telegram user data or user ID")
+            return None
 
-        # Get user data
-        user_data = get_telegram_user_data(init_data)
+        telegram_id = str(telegram_user_data['id'])
+        first_name = telegram_user_data.get('first_name', '')
+        last_name = telegram_user_data.get('last_name')
+        username = telegram_user_data.get('username')
+        photo_url = telegram_user_data.get('photo_url')
+        language_code = telegram_user_data.get('language_code')
+        is_premium = telegram_user_data.get('is_premium', False)
+
+        logger.info(f"Processing Telegram user: {telegram_id}, username: {username}")
 
         # Check if user already exists by telegram_id
         from app.models.users import User as UserModel
         from sqlalchemy.future import select
+        from datetime import datetime
 
         result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == str(user_data['id']))
+            select(UserModel).where(UserModel.telegram_id == telegram_id)
         )
         db_user = result.scalar_one_or_none()
 
         if db_user:
             # Update user data if changed
             update_fields = {
-                'first_name': user_data.get('first_name'),
-                'last_name': user_data.get('last_name'),
-                'username': user_data.get('username'),
+                'first_name': first_name,
+                'last_name': last_name,
+                'username': username,
+                'photo_url': photo_url,
+                'language_code': language_code,
+                'is_premium': is_premium,
+                'last_login': datetime.utcnow(),
+                'updated_at': datetime.utcnow()
             }
+
             updated = False
             for field, value in update_fields.items():
-                if value is not None and getattr(db_user, field) != value:
+                current_value = getattr(db_user, field)
+                if value is not None and current_value != value:
                     setattr(db_user, field, value)
                     updated = True
+                    logger.debug(f"Updated field {field}: {current_value} -> {value}")
 
             if updated:
                 await db.commit()
                 await db.refresh(db_user)
+                logger.info(f"Updated existing user: {telegram_id}")
+            else:
+                logger.info(f"User exists, no changes needed: {telegram_id}")
+
             return db_user
         else:
             # Create new user
             user_create_data = {
-                'telegram_id': str(user_data['id']),
-                'first_name': user_data.get('first_name'),
-                'last_name': user_data.get('last_name'),
-                'username': user_data.get('username'),
-                'referral_code': f"REF{str(user_data['id'])[-6:].upper()}"  # Generate referral code
+                'telegram_id': telegram_id,
+                'first_name': first_name,
+                'last_name': last_name,
+                'username': username,
+                'photo_url': photo_url,
+                'language_code': language_code,
+                'is_premium': is_premium,
+                'last_login': datetime.utcnow(),
+                # Generate referral code based on Telegram ID
+                'referral_code': f"REF{telegram_id[-6:].upper()}" if len(telegram_id) >= 6 else f"REF{telegram_id}"
             }
+
+            # Remove None values
+            user_create_data = {k: v for k, v in user_create_data.items() if v is not None}
 
             db_user = UserModel(**user_create_data)
             db.add(db_user)
             await db.commit()
             await db.refresh(db_user)
+
+            logger.info(f"Created new user: {telegram_id}, referral_code: {db_user.referral_code}")
             return db_user
-    except HTTPException:
-        # Re-raise HTTP exceptions (like validation errors)
-        raise
+
     except Exception as e:
-        # Log the error for debugging
-        logger.error(f"Unexpected error in get_or_create_user_from_telegram: {e}")
-        # Raise an HTTP exception for any other error
-        raise HTTPException(
-            status_code=400, 
-            detail=f"Error processing Telegram authentication: {str(e)}"
-        )
+        logger.error(f"Unexpected error in get_or_create_user_from_telegram: {str(e)}", exc_info=True)
+        # Rollback any changes if there was an error
+        try:
+            await db.rollback()
+        except:
+            pass
+        return None
