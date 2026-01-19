@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api'; // Using centralized API configuration
 
 // Create an axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1',
-  timeout: 10000,
+  baseURL: API_BASE_URL,
+  timeout: 10000, // Can be overridden by the API_CONFIG if needed
   headers: {
     'Content-Type': 'application/json',
   },

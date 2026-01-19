@@ -59,7 +59,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://newapp-c2js.onrender.com",  # Домен вашего frontend на Vercel
+        "https://*.onrender.com",  # Для Preview-деплоев
+        "https://newapp-six-green.vercel.app",  # Для Preview-деплоев
+        "https://*.vercel.app",  # Для Preview-деплоев
+        "http://localhost:5173"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # Подключение маршрутов
 register_api_versions(app, enabled_versions=[APIVersion.V1, APIVersion.V2])
 
