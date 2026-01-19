@@ -128,7 +128,7 @@ async def get_cart(
     )
     cart_items = result.scalars().all()
 
-    # Добавляем информацию о продуктах
+    # Добавляем информацию о продуктах и возвращаем объекты модели напрямую
     enriched_items = []
     for item in cart_items:
         # Получаем продукт
@@ -137,12 +137,14 @@ async def get_cart(
         )
         product = product_result.scalar_one_or_none()
 
-        # Создаем словарь с данными элемента корзины
+        # Создаем словарь с данными элемента корзины, включая даты
         item_dict = {
             "id": item.id,
             "user_id": item.user_id,
             "product_id": item.product_id,
             "quantity": item.quantity,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
             "product": {
                 "id": product.id,
                 "name": product.name,
