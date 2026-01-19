@@ -2,10 +2,11 @@ import axios from 'axios';
 import apiClient from './api';
 // Import specific APIs to copy their functionality
 import { userApi } from './api';
+import { API_BASE_URL } from '../config/api'; // Using centralized API configuration
 
 // Create a separate API client without Telegram interceptor for Telegram auth
 const baseApiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1',
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

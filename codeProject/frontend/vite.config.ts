@@ -4,6 +4,22 @@ import fs from 'fs'
 
 export default defineConfig({
   plugins: [react()],
+  
+  // Конфигурация для продакшена
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['@reduxjs/toolkit', 'react-redux']
+        }
+      }
+    }
+  },
     server: {
         host: '0.0.0.0',
         port: 5173,
@@ -39,10 +55,10 @@ export default defineConfig({
   },
 
   // Для правильных путей в продакшене
-  base: '/',
+  base: './',
 
   // Переменные окружения для API
   define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || '/api')
+    'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL || 'http://localhost:8000/api/v1')
   }
 })

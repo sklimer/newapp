@@ -40,12 +40,33 @@ Create a `.env` file in the root directory with the following variables:
 VITE_API_URL=http://localhost:8000/api/v1
 ```
 
+For production deployments, create a `.env.production` file with your production API URL.
+
 ## Scripts
 
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
+- `npm run serve` - Serve production build
 - `npm run preview` - Preview production build
 - `npm run lint` - Run linter
+
+## Deployment
+
+### Building for Production
+To build the application for production:
+```bash
+npm run build
+```
+
+This creates a `dist` folder with the optimized production build.
+
+### Running in Production
+After building, you can serve the application using:
+```bash
+npm run serve
+```
+
+Or deploy the `dist` folder to your preferred hosting platform (Vercel, Netlify, etc.).
 
 ## Project Structure
 
