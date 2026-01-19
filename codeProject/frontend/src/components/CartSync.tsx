@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { fetchCartFromServer } from '../store/cartSlice';
 
-const CartSync = ({ children }: { children: React.ReactNode }) => {
+const CartSync = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -18,7 +18,7 @@ const CartSync = ({ children }: { children: React.ReactNode }) => {
     loadCartFromServer();
   }, [dispatch]);
 
-  return <>{children}</>;
+  return null; // Не рендерим ничего, только выполняем синхронизацию
 };
 
 export default CartSync;
