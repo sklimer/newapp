@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -12,8 +13,13 @@ from app.schemas.users import UserResponse
 
 router = APIRouter()
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+level=logging.INFO,
+format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
-@router.post("/", response_model=CartItemResponse)
+@router.post("/add", response_model=CartItemResponse)
 async def add_to_cart(
     cart_item: CartItemCreate,
     db: AsyncSession = Depends(get_db),
@@ -60,6 +66,8 @@ async def get_cart(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_from_telegram)
 ):
+    logger.info('cart.py get_cart')
+    logger.error(current_user)
     result = await db.execute(
         select(CartItem).where(CartItem.user_id == current_user.id)
     )
@@ -90,7 +98,7 @@ async def update_cart_item(
             # Если количество <= 0, удаляем элемент
             await db.delete(cart_item)
             await db.commit()
-            raise HTTPException(status_code=200, detail="Cart item removed")
+            return {"detail": "Cart item removed"}
         else:
             cart_item.quantity = cart_item_update.quantity
     
