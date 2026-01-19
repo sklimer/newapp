@@ -185,7 +185,9 @@ async def get_cart(
     return enriched_items
 
 
-@router.put("/update", response_model=CartItemResponse)
+from fastapi.responses import JSONResponse
+
+@router.put("/update")
 async def update_cart_item(
         cart_item_update: CartItemUpdate,
         product_id: int = Query(..., description="ID товара"),
@@ -236,7 +238,8 @@ async def update_cart_item(
             logger.info(f"Удаление товара из корзины (количество <= 0)")
             await db.delete(cart_item)
             await db.commit()
-            return {"detail": "Товар удален из корзины"}
+            # Возвращаем сообщение об удалении
+            return {"detail": "Товар удален из корзины", "status": "deleted"}
         else:
             old_quantity = cart_item.quantity
             cart_item.quantity = cart_item_update.quantity
@@ -245,7 +248,31 @@ async def update_cart_item(
     await db.commit()
     await db.refresh(cart_item)
     logger.info(f"Корзина обновлена: ID {cart_item.id}, новое количество: {cart_item.quantity}")
-    return cart_item
+    
+    # Возвращаем полную информацию о товаре в корзине
+    product_result = await db.execute(
+        select(Product).where(Product.id == cart_item.product_id)
+    )
+    product = product_result.scalar_one_or_none()
+    
+    if not product:
+        raise HTTPException(status_code=404, detail="Продукт больше не доступен")
+    
+    return {
+        "id": cart_item.id,
+        "user_id": cart_item.user_id,
+        "product_id": cart_item.product_id,
+        "quantity": cart_item.quantity,
+        "created_at": cart_item.created_at,
+        "updated_at": cart_item.updated_at,
+        "product": {
+            "id": product.id,
+            "name": product.name,
+            "price": product.price,
+            "description": product.description,
+            "image_url": product.image_url
+        }
+    }
 
 
 @router.delete("/remove")
