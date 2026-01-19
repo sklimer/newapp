@@ -51,8 +51,11 @@ apiClient.interceptors.response.use(
 
 // Export individual API methods
 // Export individual API methods
-export const authApi = {
-  // Метод для проверки initData Telegram
+
+
+// Или если нужно отправлять GET запрос:
+export const userApi = {
+    // Метод для проверки initData Telegram
   verifyTelegramInitData: (initData: string) =>
     apiClient.post('/auth/verify-telegram',
       { initData }, // Тело запроса
@@ -74,10 +77,6 @@ export const authApi = {
         }
       }
     ),
-};
-
-// Или если нужно отправлять GET запрос:
-export const userApi = {
   getTelegramUser: (initData?: string) => {
     const config: any = {};
 

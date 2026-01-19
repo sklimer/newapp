@@ -16,7 +16,9 @@ const App: React.FC = () => {
           <Header />
 
           <main>
-<RouterComponent />
+            <TelegramAuth>
+            <RouterComponent />
+            </TelegramAuth>
           </main>
         </div>
       </Router>

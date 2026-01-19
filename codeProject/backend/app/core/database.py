@@ -18,6 +18,6 @@ format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
 async def get_db():
-    logger.info('async def get_db()')
+    # logger.info('async def get_db()')
     async with AsyncSessionLocal() as session:
         yield session

@@ -135,10 +135,6 @@ async def get_or_create_user_from_telegram(
                 'first_name': first_name,
                 'last_name': last_name,
                 'username': username,
-                'photo_url': photo_url,
-                'language_code': language_code,
-                'is_premium': is_premium,
-                'last_login': datetime.utcnow(),
                 'updated_at': datetime.utcnow()
             }
 
