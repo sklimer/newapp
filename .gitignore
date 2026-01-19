@@ -8,74 +8,51 @@ build/
 *.js
 *.ts
 *.tsx
-*.css
-*.map
 
 # Environment variables
 .env
 .env.local
 *.env.*
 
-# IDE files
+# Logs
+*.log
+
+# Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Logs
-*.log
-
-# Temp files
 *.tmp
 
-# Python cache (if any Python files exist in the project)
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+*.so
 
 # Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# MyPy cache
-.mypy_cache/
-
-# Pytest cache
-.pytest_cache/
-
-# Distribution / packaging
-*.egg
-*.egg-info/
-dist/
-build/
-*.pyc
-*.pyo
-*.pyd
-.Python
-__pycache__/
-*$py.class
-*$pyc
-*.so
-
 # Testing
 .pytest_cache/
-.coverage
-htmlcov/
-
-# Local configuration
-.env*
-!.env.example
-config/local.*
-!config/local.example.*
+.mypy_cache/
 
 # OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+
+# Compressed files
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
 ```

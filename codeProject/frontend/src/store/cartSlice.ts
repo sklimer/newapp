@@ -140,10 +140,10 @@ export const {
 // Async thunks for server synchronization
 export const fetchCartFromServer = createAsyncThunk(
   'cart/fetchFromServer',
-  async (_, { dispatch }) => {
+  async (telegramId: number, { dispatch }) => {
     try {
       dispatch(setLoading(true));
-      const response = await cartApi.getCart();
+      const response = await cartApi.getCart(telegramId);
 
       // Check if response data is valid
       if (!response.data || !Array.isArray(response.data)) {
@@ -196,9 +196,9 @@ export const fetchCartFromServer = createAsyncThunk(
 
 export const syncAddToCart = createAsyncThunk(
   'cart/syncAddToCart',
-  async ({ item, quantity }: { item: Omit<CartItem, 'quantity'>; quantity: number }, { dispatch }) => {
+  async ({ item, quantity, telegramId }: { item: Omit<CartItem, 'quantity'>; quantity: number; telegramId: number }, { dispatch }) => {
     try {
-      await cartApi.addToCart({ itemId: item.id, quantity });
+      await cartApi.addToCart(item.id, quantity, telegramId);
       dispatch(addItem(item));
     } catch (error) {
       console.error('Failed to add item to cart on server:', error);
@@ -209,9 +209,9 @@ export const syncAddToCart = createAsyncThunk(
 
 export const syncUpdateCart = createAsyncThunk(
   'cart/syncUpdateCart',
-  async ({ id, quantity }: { id: number; quantity: number }, { dispatch }) => {
+  async ({ id, quantity, telegramId }: { id: number; quantity: number; telegramId: number }, { dispatch }) => {
     try {
-      await cartApi.updateCart(id, quantity);
+      await cartApi.updateCart(id, quantity, telegramId);
       dispatch(updateQuantity({ id, quantity }));
     } catch (error) {
       console.error('Failed to update cart on server:', error);
@@ -222,9 +222,9 @@ export const syncUpdateCart = createAsyncThunk(
 
 export const syncRemoveFromCart = createAsyncThunk(
   'cart/syncRemoveFromCart',
-  async (id: number, { dispatch }) => {
+  async ({ id, telegramId }: { id: number; telegramId: number }, { dispatch }) => {
     try {
-      await cartApi.removeFromCart(id);
+      await cartApi.removeFromCart(id, telegramId);
       dispatch(removeItem(id));
     } catch (error) {
       console.error('Failed to remove item from cart on server:', error);
@@ -235,9 +235,9 @@ export const syncRemoveFromCart = createAsyncThunk(
 
 export const syncClearCart = createAsyncThunk(
   'cart/syncClearCart',
-  async (_, { dispatch }) => {
+  async (telegramId: number, { dispatch }) => {
     try {
-      await cartApi.clearCart();
+      await cartApi.clearCart(telegramId);
       dispatch(clearCart());
     } catch (error) {
       console.error('Failed to clear cart on server:', error);

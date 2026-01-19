@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { syncAddToCart } from '../store/cartSlice';
+import { syncAddToCart, addItem } from '../store/cartSlice';
 import { menuApi } from '../api/api';
 import { Category, Product } from '../types/types';
+import { useTelegramId } from '../hooks/useTelegramId';
 
 interface MenuItem {
   id: number;
@@ -17,6 +18,7 @@ interface MenuItem {
 
 const Menu: React.FC = () => {
   const dispatch = useDispatch();
+  const { telegramId, loading: telegramLoading, error: telegramError } = useTelegramId();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | 'all'>('all');
@@ -69,7 +71,13 @@ const Menu: React.FC = () => {
 
   const addToCart = (item: MenuItem) => {
     // Dispatch action to add item to cart
-    dispatch(syncAddToCart({ item: { id: item.id, name: item.name, price: item.price }, quantity: 1 }));
+    if (telegramId) {
+      dispatch(syncAddToCart({ item: { id: item.id, name: item.name, price: item.price }, quantity: 1, telegramId }));
+    } else {
+      console.error('Telegram ID is not available');
+      // Fallback to local storage only if Telegram ID is not available
+      dispatch(addItem({ id: item.id, name: item.name, price: item.price }));
+    }
   };
 
   if (loading) {

@@ -2,7 +2,7 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
-import { updateQuantity, removeItem } from '../store/cartSlice';
+import { updateQuantity, removeItem, syncUpdateCart, syncRemoveFromCart } from '../store/cartSlice';
 import { cartApi } from '../api/api';
 import { useTelegramId } from '../hooks/useTelegramId';
 
@@ -21,9 +21,10 @@ const Cart = () => {
 
     try {
       if (telegramId) {
-        await cartApi.updateCart(product_id, newQuantity, telegramId);
+        await dispatch(syncUpdateCart({ id: product_id, quantity: newQuantity, telegramId }));
+      } else {
+        dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
       }
-      dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
     } catch (error) {
       console.error('Failed to update quantity:', error);
       dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
@@ -33,9 +34,10 @@ const Cart = () => {
   const handleRemoveItem = async (product_id: number) => {
     try {
       if (telegramId) {
-        await cartApi.removeFromCart(product_id, telegramId);
+        await dispatch(syncRemoveFromCart({ id: product_id, telegramId }));
+      } else {
+        dispatch(removeItem(product_id));
       }
-      dispatch(removeItem(product_id));
     } catch (error) {
       console.error('Failed to remove item:', error);
       dispatch(removeItem(product_id));
