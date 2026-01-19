@@ -54,6 +54,16 @@ apiClient.interceptors.response.use(
 
 
 // Или если нужно отправлять GET запрос:
+// Helper function to safely decode URI component
+function safeDecodeURIComponent(str: string): string {
+  try {
+    return decodeURIComponent(str);
+  } catch (e) {
+    console.error('Error decoding URI component:', e);
+    return str;
+  }
+}
+
 export const userApi = {
     // Метод для проверки initData Telegram
   verifyTelegramInitData: (initData: string) =>

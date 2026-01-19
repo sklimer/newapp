@@ -585,3 +585,26 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Loading and Error States */
+.loading {
+  padding: 20px;
+  text-align: center;
+  color: #666;
+}
+
+.error {
+  padding: 20px;
+  text-align: center;
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.warning-message {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 15px;
+  text-align: center;
+}

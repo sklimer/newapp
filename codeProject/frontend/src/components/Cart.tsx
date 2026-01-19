@@ -48,13 +48,18 @@ const Cart = () => {
 
   // Если идет загрузка Telegram ID
   if (telegramLoading) {
-    return <div>Инициализация пользователя...</div>;
+    return (
+      <div className="cart">
+        <h2>Корзина</h2>
+        <div className="loading">Инициализация пользователя...</div>
+      </div>
+    );
   }
 
-  // Если ошибка получения Telegram ID
+  // Если ошибка получения Telegram ID, но мы все равно можем отобразить корзину
   if (telegramError && !telegramId) {
     return (
-      <div className="cart-warning">
+      <div className="cart">
         <h2>Корзина</h2>
         <div className="warning-message">
           <p>⚠️ {telegramError}</p>
@@ -67,7 +72,12 @@ const Cart = () => {
 
   // Если корзина загружается
   if (loading) {
-    return <div>Загрузка корзины...</div>;
+    return (
+      <div className="cart">
+        <h2>Корзина</h2>
+        <div className="loading">Загрузка корзины...</div>
+      </div>
+    );
   }
 
   // Если корзина пуста
@@ -170,4 +180,4 @@ const Cart = () => {
   );
 };
 
-export default CartWithHook;
+export default Cart;

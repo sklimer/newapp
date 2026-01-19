@@ -73,11 +73,20 @@ const Menu: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="menu">Loading menu...</div>;
+    return (
+      <div className="menu">
+        <div className="loading">Loading menu...</div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="menu">Error: {error}</div>;
+    return (
+      <div className="menu">
+        <div className="error">Error: {error}</div>
+        <p>Please try again later.</p>
+      </div>
+    );
   }
 
   return (

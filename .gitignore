@@ -1,50 +1,81 @@
 ```
-# Compiled and build artifacts
-DATA/
-codeProject/.idea
-codeProject/frontend/node_modules
-codeProject/README.md
-*.pyc
-__pycache__/
-*.o
-*.obj
-*.so
-*.dll
-*.exe
-*.class
-*.out
-
 # Dependencies
 node_modules/
-venv/
-.venv/
+
+# Build outputs
+dist/
+build/
+*.js
+*.ts
+*.tsx
+*.css
+*.map
+
+# Environment variables
 .env
 .env.local
-.env.*
+*.env.*
 
-# Logs and temp files
-*.log
-*.tmp
+# IDE files
+.vscode/
+.idea/
 *.swp
 *.swo
 
-# Editors
-.vscode/
-.idea/
+# Logs
+*.log
 
-# Coverage
-.coverage
+# Temp files
+*.tmp
+
+# Python cache (if any Python files exist in the project)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Coverage reports
 coverage/
 htmlcov/
+.coverage
 
-# Build directories
-dist/
-build/
-target/
-.pytest_cache/
+# MyPy cache
 .mypy_cache/
 
-# System files
+# Pytest cache
+.pytest_cache/
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+*.pyc
+*.pyo
+*.pyd
+.Python
+__pycache__/
+*$py.class
+*$pyc
+*.so
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local configuration
+.env*
+!.env.example
+config/local.*
+!config/local.example.*
+
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 ```
