@@ -2,10 +2,10 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
 import { updateQuantity, removeItem } from '../store/cartSlice';
-import { updateCartItem, removeFromCart } from '../services/cartApi';
+import { cartApi } from '../api/api';
 
 const Cart = () => {
-  const { items, status } = useSelector((state: RootState) => state.cart);
+  const { items, loading } = useSelector((state: RootState) => state.cart);
   const dispatch = useDispatch<AppDispatch>();
 
   const handleQuantityChange = async (product_id: number, newQuantity: number) => {
@@ -15,8 +15,8 @@ const Cart = () => {
     }
 
     try {
-      await updateCartItem(product_id, { quantity: newQuantity });
-      dispatch(updateQuantity({ product_id, quantity: newQuantity }));
+      await cartApi.updateCart(product_id, newQuantity);
+      dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
     } catch (error) {
       console.error('Failed to update quantity:', error);
     }
@@ -24,7 +24,7 @@ const Cart = () => {
 
   const handleRemoveItem = async (product_id: number) => {
     try {
-      await removeFromCart(product_id);
+      await cartApi.removeFromCart(product_id);
       dispatch(removeItem(product_id));
     } catch (error) {
       console.error('Failed to remove item:', error);
@@ -35,7 +35,7 @@ const Cart = () => {
     return items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
-  if (status === 'loading') {
+  if (loading) {
     return <div>Загрузка корзины...</div>;
   }
 
@@ -48,18 +48,18 @@ const Cart = () => {
       <h2>Корзина</h2>
       <ul>
         {items.map((item) => (
-          <li key={item.product_id} className="cart-item">
+          <li key={item.id} className="cart-item">
             <span>{item.name} - {item.price} ₽ x </span>
             <input
               type="number"
               min="1"
               value={item.quantity}
-              onChange={(e) => handleQuantityChange(item.product_id, parseInt(e.target.value))}
+              onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value))}
               style={{ width: '60px', marginRight: '10px' }}
             />
             <span>= {item.price * item.quantity} ₽</span>
             <button
-              onClick={() => handleRemoveItem(item.product_id)}
+              onClick={() => handleRemoveItem(item.id)}
               style={{ marginLeft: '10px' }}
             >
               Удалить
