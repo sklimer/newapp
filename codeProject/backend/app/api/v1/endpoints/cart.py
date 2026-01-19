@@ -10,7 +10,9 @@ from app.models.menu import Product
 from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate
 from app.schemas.users import UserResponse
 
-router = APIRouter()
+router = APIRouter(
+    redirect_slashes=False
+)
 
 
 @router.post("/add", response_model=CartItemResponse)

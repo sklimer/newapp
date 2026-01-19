@@ -13,7 +13,7 @@ class TelegramWebAppMiddleware(BaseHTTPMiddleware):
         self.restricted_paths = restricted_paths or [
             "/api/v1/users/",
             "/api/v1/orders/", 
-            "/api/v1/cart/",
+            # "/api/v1/cart/",  #временно отключено для отладки
             "/api/v1/profile/",
             "/api/v1/payments/"
         ]
@@ -21,7 +21,12 @@ class TelegramWebAppMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Check if the path is restricted and requires Telegram environment
         path = request.url.path
-        is_restricted_path = any(path.startswith(restricted_path) for restricted_path in self.restricted_paths)
+        # Check if path matches restricted paths either with or without trailing slash
+        is_restricted_path = any(
+            path.startswith(restricted_path) or 
+            path.rstrip('/') == restricted_path.rstrip('/') 
+            for restricted_path in self.restricted_paths
+        )
         
         if is_restricted_path and not is_running_in_telegram_web_app(request):
             return JSONResponse(
