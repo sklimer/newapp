@@ -9,7 +9,7 @@ from app.api.deps import get_db
 from app.models.users import User
 from app.models.cart import CartItem
 from app.models.menu import Product
-from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate
+from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate, CartItemBatchUpdate
 
 router = APIRouter(redirect_slashes=False)
 logger = logging.getLogger(__name__)
@@ -188,15 +188,16 @@ async def get_cart(
 @router.put("/update", response_model=CartItemResponse)
 async def update_cart_item(
         cart_item_update: CartItemUpdate,
+        product_id: int = Query(..., description="ID товара"),
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
         db: AsyncSession = Depends(get_db)
 ):
     """
     Обновляет количество товара в корзине
-    Использование: /update?telegram_id=123456789
+    Использование: /update?telegram_id=123456789&product_id=1
     """
     logger.info(
-        f"Обновление корзины для пользователя {telegram_id}: product_id={cart_item_update.product_id}, new_quantity={cart_item_update.quantity}")
+        f"Обновление корзины для пользователя {telegram_id}: product_id={product_id}, new_quantity={cart_item_update.quantity}")
 
     # Получаем пользователя
     user = await get_user_from_db(telegram_id, db)
@@ -204,7 +205,7 @@ async def update_cart_item(
 
     result = await db.execute(
         select(CartItem).where(
-            CartItem.product_id == cart_item_update.product_id,
+            CartItem.product_id == product_id,
             CartItem.user_id == user.id
         )
     )
@@ -212,17 +213,17 @@ async def update_cart_item(
 
     if not cart_item:
         logger.warning(
-            f"Элемент корзины с product_id {cart_item_update.product_id} не найден для пользователя {user.id}")
+            f"Элемент корзины с product_id {product_id} не найден для пользователя {user.id}")
         raise HTTPException(status_code=404, detail="Элемент корзины не найден")
 
     # Проверяем, существует ли продукт в базе данных
     product_result = await db.execute(
-        select(Product).where(Product.id == cart_item_update.product_id)
+        select(Product).where(Product.id == product_id)
     )
     product = product_result.scalar_one_or_none()
     
     if not product:
-        logger.warning(f"Продукт с ID {cart_item_update.product_id} не найден в базе данных, элемент корзины будет удален")
+        logger.warning(f"Продукт с ID {product_id} не найден в базе данных, элемент корзины будет удален")
         await db.delete(cart_item)
         await db.commit()
         raise HTTPException(status_code=404, detail="Продукт больше не доступен")
@@ -403,7 +404,7 @@ async def get_cart_count(
 # Endpoint для массового обновления корзины
 @router.put("/batch-update")
 async def batch_update_cart(
-        updates: List[CartItemUpdate],
+        updates: List[CartItemBatchUpdate],
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
         db: AsyncSession = Depends(get_db)
 ):
