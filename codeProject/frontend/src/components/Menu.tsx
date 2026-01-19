@@ -69,10 +69,16 @@ const Menu: React.FC = () => {
         return category ? item.category === category.name : false;
       });
 
-  const addToCart = (item: MenuItem) => {
+  const addToCart = async (item: MenuItem) => {
     // Dispatch action to add item to cart
     if (telegramId) {
-      dispatch(syncAddToCart({ item: { id: item.id, name: item.name, price: item.price }, quantity: 1, telegramId }));
+      try {
+        await dispatch(syncAddToCart({ item: { id: item.id, name: item.name, price: item.price }, quantity: 1, telegramId })).unwrap();
+      } catch (error) {
+        console.error('Failed to add item to cart:', error);
+        // Fallback to local storage if server sync fails
+        dispatch(addItem({ id: item.id, name: item.name, price: item.price }));
+      }
     } else {
       console.error('Telegram ID is not available');
       // Fallback to local storage only if Telegram ID is not available

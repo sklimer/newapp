@@ -21,12 +21,13 @@ const Cart = () => {
 
     try {
       if (telegramId) {
-        await dispatch(syncUpdateCart({ id: product_id, quantity: newQuantity, telegramId }));
+        await dispatch(syncUpdateCart({ id: product_id, quantity: newQuantity, telegramId })).unwrap();
       } else {
         dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
       }
     } catch (error) {
       console.error('Failed to update quantity:', error);
+      // Fallback to local update if server sync fails
       dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
     }
   };
@@ -34,12 +35,13 @@ const Cart = () => {
   const handleRemoveItem = async (product_id: number) => {
     try {
       if (telegramId) {
-        await dispatch(syncRemoveFromCart({ id: product_id, telegramId }));
+        await dispatch(syncRemoveFromCart({ id: product_id, telegramId })).unwrap();
       } else {
         dispatch(removeItem(product_id));
       }
     } catch (error) {
       console.error('Failed to remove item:', error);
+      // Fallback to local removal if server sync fails
       dispatch(removeItem(product_id));
     }
   };

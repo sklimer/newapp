@@ -163,40 +163,52 @@ export const fetchCartFromServer = createAsyncThunk(
 
       // Map server response to our local CartItem format
       const cartItems = response.data.map((item: any) => {
-        // Check if the expected fields exist
-        if (!item || typeof item !== 'object') {
-          console.warn('Invalid cart item received:', item);
+        try {
+          // Check if the expected fields exist
+          if (!item || typeof item !== 'object') {
+            console.warn('Invalid cart item received:', item);
+            return null;
+          }
+
+          // Handle different possible structures of the response
+          let id, name, price, quantity;
+
+          // If it has a nested product object
+          if (item.product) {
+            id = item.product_id || item.id;
+            name = item.product.name || 'Unknown';
+            price = item.product.price || 0;
+            quantity = item.quantity || item.qty || 1;
+          } else if (item.product === null) {
+            // If product was not found in database, use available information
+            id = item.product_id || item.id;
+            name = 'Товар удален';
+            price = 0;
+            quantity = item.quantity || item.qty || 1;
+          } else {
+            // If product info is directly in the item
+            id = item.id || item.product_id;
+            name = item.name || (item.product_name ? item.product_name : 'Unknown');
+            price = item.price || (item.product ? item.product.price : 0);
+            quantity = item.quantity || item.qty || 1;
+          }
+
+          return {
+            id: id,
+            name: name,
+            price: price,
+            quantity: quantity
+          };
+        } catch (mappingError) {
+          console.error('Error mapping cart item:', item, mappingError);
           return null;
         }
-
-        // Handle different possible structures of the response
-        let id, name, price, quantity;
-
-        // If it has a nested product object
-        if (item.product) {
-          id = item.product_id || item.id;
-          name = item.product.name;
-          price = item.product.price;
-          quantity = item.quantity || item.qty || 1;
-        } else {
-          // If product info is directly in the item
-          id = item.id || item.product_id;
-          name = item.name || (item.product_name ? item.product_name : 'Unknown');
-          price = item.price || (item.product ? item.product.price : 0);
-          quantity = item.quantity || item.qty || 1;
-        }
-
-        return {
-          id: id,
-          name: name,
-          price: price,
-          quantity: quantity
-        };
       }).filter(Boolean); // Filter out null values
 
       return cartItems;
     } catch (error) {
       console.error('Failed to fetch cart from server:', error);
+      dispatch(setError(error.message || 'Неизвестная ошибка при загрузке корзины'));
       throw error;
     } finally {
       dispatch(setLoading(false));
@@ -208,8 +220,9 @@ export const syncAddToCart = createAsyncThunk(
   'cart/syncAddToCart',
   async ({ item, quantity, telegramId }: { item: Omit<CartItem, 'quantity'>; quantity: number; telegramId: number }, { dispatch }) => {
     try {
-      await cartApi.addToCart(item.id, quantity, telegramId);
+      const response = await cartApi.addToCart(item.id, quantity, telegramId);
       dispatch(addItem(item));
+      return response.data;
     } catch (error) {
       console.error('Failed to add item to cart on server:', error);
       throw error;
@@ -221,8 +234,16 @@ export const syncUpdateCart = createAsyncThunk(
   'cart/syncUpdateCart',
   async ({ id, quantity, telegramId }: { id: number; quantity: number; telegramId: number }, { dispatch }) => {
     try {
-      await cartApi.updateCart(id, quantity, telegramId);
-      dispatch(updateQuantity({ id, quantity }));
+      const response = await cartApi.updateCart(id, quantity, telegramId);
+      
+      // Проверяем, был ли товар удален (когда quantity <= 0)
+      if (response.data && response.data.status === 'deleted') {
+        // Удаляем товар из локальной корзины
+        dispatch(removeItem(id));
+      } else {
+        // Обновляем количество товара в локальной корзине
+        dispatch(updateQuantity({ id, quantity }));
+      }
     } catch (error) {
       console.error('Failed to update cart on server:', error);
       throw error;
@@ -234,8 +255,13 @@ export const syncRemoveFromCart = createAsyncThunk(
   'cart/syncRemoveFromCart',
   async ({ id, telegramId }: { id: number; telegramId: number }, { dispatch }) => {
     try {
-      await cartApi.removeFromCart(id, telegramId);
+      const response = await cartApi.removeFromCart(id, telegramId);
+      
+      // Проверяем, был ли товар реально удален или он уже отсутствовал
+      // В любом случае удаляем его из локального состояния
       dispatch(removeItem(id));
+      
+      return response.data; // Возвращаем данные ответа
     } catch (error) {
       console.error('Failed to remove item from cart on server:', error);
       throw error;
@@ -247,8 +273,9 @@ export const syncClearCart = createAsyncThunk(
   'cart/syncClearCart',
   async (telegramId: number, { dispatch }) => {
     try {
-      await cartApi.clearCart(telegramId);
+      const response = await cartApi.clearCart(telegramId);
       dispatch(clearCart());
+      return response.data;
     } catch (error) {
       console.error('Failed to clear cart on server:', error);
       throw error;
