@@ -141,6 +141,8 @@ async def get_cart(
 
     # Добавляем информацию о продуктах и возвращаем объекты модели напрямую
     enriched_items = []
+    items_to_delete = []  # Список элементов корзины для удаления
+    
     for item in cart_items:
         logger.info(f"Обработка товара в корзине: ID {item.id}, product_id {item.product_id}, quantity {item.quantity}")
 
@@ -151,25 +153,33 @@ async def get_cart(
         product = product_result.scalar_one_or_none()
 
         if not product:
-            logger.warning(f"Продукт с ID {item.product_id} не найден для элемента корзины {item.id}")
+            logger.warning(f"Продукт с ID {item.product_id} не найден для элемента корзины {item.id}, элемент будет удален")
+            items_to_delete.append(item)
+        else:
+            # Создаем словарь с данными элемента корзины, включая даты
+            item_dict = {
+                "id": item.id,
+                "user_id": item.user_id,
+                "product_id": item.product_id,
+                "quantity": item.quantity,
+                "created_at": item.created_at,
+                "updated_at": item.updated_at,
+                "product": {
+                    "id": product.id,
+                    "name": product.name,
+                    "price": product.price,
+                    "description": product.description,
+                    "image_url": product.image_url
+                }
+            }
+            enriched_items.append(item_dict)
 
-        # Создаем словарь с данными элемента корзины, включая даты
-        item_dict = {
-            "id": item.id,
-            "user_id": item.user_id,
-            "product_id": item.product_id,
-            "quantity": item.quantity,
-            "created_at": item.created_at,
-            "updated_at": item.updated_at,
-            "product": {
-                "id": product.id,
-                "name": product.name,
-                "price": product.price,
-                "description": product.description,
-                "image_url": product.image_url
-            } if product else None
-        }
-        enriched_items.append(item_dict)
+    # Удаляем элементы корзины, для которых нет соответствующих продуктов
+    if items_to_delete:
+        for item in items_to_delete:
+            await db.delete(item)
+        await db.commit()
+        logger.info(f"Удалено {len(items_to_delete)} элементов корзины без соответствующих продуктов")
 
     logger.info(f"Возвращено {len(enriched_items)} элементов корзины для пользователя {telegram_id}")
     return enriched_items
@@ -204,6 +214,18 @@ async def update_cart_item(
         logger.warning(
             f"Элемент корзины с product_id {cart_item_update.product_id} не найден для пользователя {user.id}")
         raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+    # Проверяем, существует ли продукт в базе данных
+    product_result = await db.execute(
+        select(Product).where(Product.id == cart_item_update.product_id)
+    )
+    product = product_result.scalar_one_or_none()
+    
+    if not product:
+        logger.warning(f"Продукт с ID {cart_item_update.product_id} не найден в базе данных, элемент корзины будет удален")
+        await db.delete(cart_item)
+        await db.commit()
+        raise HTTPException(status_code=404, detail="Продукт больше не доступен")
 
     logger.info(f"Найден элемент корзины: ID {cart_item.id}, текущее количество: {cart_item.quantity}")
 
@@ -262,7 +284,9 @@ async def remove_from_cart(
 
     if not cart_item:
         logger.warning(f"Товар с product_id {product_id} не найден в корзине пользователя {user.id}")
-        raise HTTPException(status_code=404, detail="Товар не найден в корзине")
+        # Вместо выброса исключения, возвращаем сообщение об успешном выполнении
+        # Это позволяет избежать ошибки на фронтенде, когда товар уже удален
+        return {"detail": "Товар отсутствовал в корзине", "product_id": product_id}
 
     logger.info(
         f"Найден товар в корзине: ID {cart_item.id}, product_id {cart_item.product_id}, quantity {cart_item.quantity}")
@@ -398,7 +422,22 @@ async def batch_update_cart(
         )
         cart_item = result.scalar_one_or_none()
 
-        if cart_item:
+        # Проверяем, существует ли продукт в базе данных
+        product_result = await db.execute(
+            select(Product).where(Product.id == update.product_id)
+        )
+        product = product_result.scalar_one_or_none()
+        
+        if cart_item and not product:
+            # Продукт был удален из базы, удаляем запись из корзины
+            logger.warning(f"Продукт с ID {update.product_id} не найден в базе данных, элемент корзины будет удален")
+            await db.delete(cart_item)
+            results.append({
+                "product_id": update.product_id,
+                "status": "product_not_found_and_removed",
+                "message": "Продукт больше не доступен и был удален из корзины"
+            })
+        elif cart_item:
             if update.quantity and update.quantity > 0:
                 cart_item.quantity = update.quantity
                 results.append({
@@ -414,25 +453,24 @@ async def batch_update_cart(
                 })
         else:
             # Если товара нет в корзине, но quantity > 0 - добавляем
-            if update.quantity and update.quantity > 0:
-                # Проверяем существование товара
-                product_result = await db.execute(
-                    select(Product).where(Product.id == update.product_id)
+            if update.quantity and update.quantity > 0 and product:
+                new_item = CartItem(
+                    user_id=user.id,
+                    product_id=update.product_id,
+                    quantity=update.quantity
                 )
-                product = product_result.scalar_one_or_none()
-
-                if product:
-                    new_item = CartItem(
-                        user_id=user.id,
-                        product_id=update.product_id,
-                        quantity=update.quantity
-                    )
-                    db.add(new_item)
-                    results.append({
-                        "product_id": update.product_id,
-                        "status": "added",
-                        "quantity": update.quantity
-                    })
+                db.add(new_item)
+                results.append({
+                    "product_id": update.product_id,
+                    "status": "added",
+                    "quantity": update.quantity
+                })
+            elif update.quantity and update.quantity > 0 and not product:
+                results.append({
+                    "product_id": update.product_id,
+                    "status": "product_not_found",
+                    "message": "Продукт не найден в базе данных"
+                })
 
     await db.commit()
 

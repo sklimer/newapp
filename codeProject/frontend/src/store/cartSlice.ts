@@ -175,8 +175,14 @@ export const fetchCartFromServer = createAsyncThunk(
         // If it has a nested product object
         if (item.product) {
           id = item.product_id || item.id;
-          name = item.product.name;
-          price = item.product.price;
+          name = item.product.name || 'Unknown';
+          price = item.product.price || 0;
+          quantity = item.quantity || item.qty || 1;
+        } else if (item.product === null) {
+          // If product was not found in database, use available information
+          id = item.product_id || item.id;
+          name = 'Товар удален';
+          price = 0;
           quantity = item.quantity || item.qty || 1;
         } else {
           // If product info is directly in the item
@@ -234,8 +240,13 @@ export const syncRemoveFromCart = createAsyncThunk(
   'cart/syncRemoveFromCart',
   async ({ id, telegramId }: { id: number; telegramId: number }, { dispatch }) => {
     try {
-      await cartApi.removeFromCart(id, telegramId);
+      const response = await cartApi.removeFromCart(id, telegramId);
+      
+      // Проверяем, был ли товар реально удален или он уже отсутствовал
+      // В любом случае удаляем его из локального состояния
       dispatch(removeItem(id));
+      
+      return response.data; // Возвращаем данные ответа
     } catch (error) {
       console.error('Failed to remove item from cart on server:', error);
       throw error;
