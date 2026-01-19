@@ -16,16 +16,16 @@ const App: React.FC = () => {
           <Header />
 
           <main>
-            <TelegramAuth>
             <RouterComponent />
-            </TelegramAuth>
           </main>
         </div>
       </Router>
     </Provider>
   );
 };
-
+// <TelegramAuth>
+//             <RouterComponent />
+//             </TelegramAuth>
 export default App;
 //   const [isTelegramEnvironment, setIsTelegramEnvironment] = useState<boolean | null>(null);
 //
