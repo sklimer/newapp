@@ -144,13 +144,46 @@ export const fetchCartFromServer = createAsyncThunk(
     try {
       dispatch(setLoading(true));
       const response = await cartApi.getCart();
+
+      // Check if response data is valid
+      if (!response.data || !Array.isArray(response.data)) {
+        console.warn('Invalid cart data received from server:', response.data);
+        return [];
+      }
+
       // Map server response to our local CartItem format
-      const cartItems = response.data.map((item: any) => ({
-        id: item.product_id,
-        name: item.product.name,
-        price: item.product.price,
-        quantity: item.quantity
-      }));
+      const cartItems = response.data.map((item: any) => {
+        // Check if the expected fields exist
+        if (!item || typeof item !== 'object') {
+          console.warn('Invalid cart item received:', item);
+          return null;
+        }
+
+        // Handle different possible structures of the response
+        let id, name, price, quantity;
+
+        // If it has a nested product object
+        if (item.product) {
+          id = item.product_id || item.id;
+          name = item.product.name;
+          price = item.product.price;
+          quantity = item.quantity || item.qty || 1;
+        } else {
+          // If product info is directly in the item
+          id = item.id || item.product_id;
+          name = item.name || (item.product_name ? item.product_name : 'Unknown');
+          price = item.price || (item.product ? item.product.price : 0);
+          quantity = item.quantity || item.qty || 1;
+        }
+
+        return {
+          id: id,
+          name: name,
+          price: price,
+          quantity: quantity
+        };
+      }).filter(Boolean); // Filter out null values
+
       return cartItems;
     } catch (error) {
       console.error('Failed to fetch cart from server:', error);
