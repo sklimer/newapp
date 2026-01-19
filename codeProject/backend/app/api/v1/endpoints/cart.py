@@ -11,7 +11,9 @@ from app.models.menu import Product
 from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate
 from app.schemas.users import UserResponse
 
-router = APIRouter()
+router = APIRouter(
+    redirect_slashes=False
+)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
