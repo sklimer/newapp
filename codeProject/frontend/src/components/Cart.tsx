@@ -1,8 +1,8 @@
 // components/CartWithHook.tsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../store';
-import { updateQuantity, removeItem, syncUpdateCart, syncRemoveFromCart } from '../store/cartSlice';
+import { updateQuantity, removeItem, syncUpdateCart, syncRemoveFromCart, fetchCartFromServer, setLoading } from '../store/cartSlice';
 import { cartApi } from '../api/api';
 import { useTelegramId } from '../hooks/useTelegramId';
 
@@ -13,6 +13,24 @@ const Cart = () => {
 
   const { telegramId, loading: telegramLoading, error: telegramError } = useTelegramId();
 
+  // Загружаем корзину с сервера при монтировании компонента, если доступен telegramId
+  useEffect(() => {
+    const loadCartFromServer = async () => {
+      if (telegramId) {
+        try {
+          dispatch(setLoading(true));
+          await dispatch(fetchCartFromServer(telegramId)).unwrap();
+        } catch (error) {
+          console.error('Failed to load cart from server:', error);
+        } finally {
+          dispatch(setLoading(false));
+        }
+      }
+    };
+
+    loadCartFromServer();
+  }, [dispatch, telegramId]);
+
   const handleQuantityChange = async (product_id: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       await handleRemoveItem(product_id);
@@ -21,12 +39,16 @@ const Cart = () => {
 
     try {
       if (telegramId) {
-        await dispatch(syncUpdateCart({ id: product_id, quantity: newQuantity, telegramId }));
+        // Прямой вызов API для обновления количества товара
+        await cartApi.updateCart(product_id, newQuantity, telegramId);
+        // Обновляем локальное состояние после успешного вызова API
+        dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
       } else {
         dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
       }
     } catch (error) {
       console.error('Failed to update quantity:', error);
+      // В случае ошибки, пробуем использовать Redux actions
       dispatch(updateQuantity({ id: product_id, quantity: newQuantity }));
     }
   };
@@ -34,12 +56,16 @@ const Cart = () => {
   const handleRemoveItem = async (product_id: number) => {
     try {
       if (telegramId) {
-        await dispatch(syncRemoveFromCart({ id: product_id, telegramId }));
+        // Прямой вызов API для удаления товара из корзины
+        await cartApi.removeFromCart(product_id, telegramId);
+        // Обновляем локальное состояние после успешного вызова API
+        dispatch(removeItem(product_id));
       } else {
         dispatch(removeItem(product_id));
       }
     } catch (error) {
       console.error('Failed to remove item:', error);
+      // В случае ошибки, пробуем использовать Redux actions
       dispatch(removeItem(product_id));
     }
   };
@@ -134,13 +160,22 @@ const Cart = () => {
             <strong>Итого: {getTotalPrice()} ₽</strong>
             {!telegramId && <small className="warning-text"> (только локально)</small>}
           </div>
-          <button
-            className="checkout-button"
-            onClick={handleCheckout}
-            disabled={!telegramId}
-          >
-            {telegramId ? 'Оформить заказ' : 'Требуется авторизация'}
-          </button>
+          <div className="cart-actions">
+            <button
+              className="refresh-button"
+              onClick={handleRefreshCart}
+              disabled={!telegramId || loading}
+            >
+              {loading ? 'Обновление...' : 'Обновить корзину'}
+            </button>
+            <button
+              className="checkout-button"
+              onClick={handleCheckout}
+              disabled={!telegramId}
+            >
+              {telegramId ? 'Оформить заказ' : 'Требуется авторизация'}
+            </button>
+          </div>
         </div>
       </>
     );
@@ -160,6 +195,21 @@ const Cart = () => {
     } catch (error) {
       console.error('Ошибка при оформлении заказа:', error);
       alert('Произошла ошибка при оформлении заказа');
+    }
+  };
+
+  // Обработчик обновления корзины с сервера
+  const handleRefreshCart = async () => {
+    if (telegramId) {
+      try {
+        dispatch(setLoading(true));
+        await dispatch(fetchCartFromServer(telegramId)).unwrap();
+      } catch (error) {
+        console.error('Failed to refresh cart from server:', error);
+        alert('Не удалось обновить корзину с сервера');
+      } finally {
+        dispatch(setLoading(false));
+      }
     }
   };
 

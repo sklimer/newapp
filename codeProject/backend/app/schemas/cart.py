@@ -16,6 +16,11 @@ class CartItemUpdate(BaseModel):
     quantity: Optional[int] = None
 
 
+class CartItemBatchUpdate(BaseModel):
+    product_id: int
+    quantity: Optional[int] = None
+
+
 class CartItemResponse(CartItemBase):
     id: int
     user_id: int

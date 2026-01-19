@@ -1,7 +1,8 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
+from sqlalchemy import select
 from typing import List, Optional
 from pydantic import BaseModel
 
@@ -9,7 +10,7 @@ from app.api.deps import get_db
 from app.models.users import User
 from app.models.cart import CartItem
 from app.models.menu import Product
-from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate
+from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate, CartItemBatchUpdate
 
 router = APIRouter(redirect_slashes=False)
 logger = logging.getLogger(__name__)
@@ -28,7 +29,6 @@ async def get_user_by_telegram_id(
     """
     Получает пользователя по telegram_id из query параметра или тела запроса
     """
-    # Определяем telegram_id из разных источников
     final_telegram_id = None
 
     if telegram_id:
@@ -51,8 +51,6 @@ async def get_user_from_db(telegram_id: int, db: AsyncSession) -> User:
     user = result.scalar_one_or_none()
 
     if not user:
-        # Можно создать нового пользователя автоматически
-        # или вернуть ошибку
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
     return user
@@ -132,78 +130,87 @@ async def get_cart(
     user = await get_user_from_db(telegram_id, db)
     logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
-    result = await db.execute(
-        select(CartItem).where(CartItem.user_id == user.id)
+    # Используем selectinload для жадной загрузки связанных данных
+    stmt = select(CartItem).options(
+        selectinload(CartItem.product)  # Жадная загрузка продукта
+    ).where(
+        CartItem.user_id == user.id
     )
+
+    result = await db.execute(stmt)
     cart_items = result.scalars().all()
 
     logger.info(f"Найдено {len(cart_items)} товаров в корзине пользователя {telegram_id}")
 
-    # Добавляем информацию о продуктах и возвращаем объекты модели напрямую
-    enriched_items = []
+    # Проверяем загрузку продуктов (теперь это безопасно)
+    if cart_items:
+        first_item = cart_items[0]
+        if first_item.product:
+            logger.info(f"Первый товар в корзине: {first_item.product.name}, цена: {first_item.product.price}")
+        else:
+            logger.warning(f"Продукт для первого элемента корзины не загружен")
+
+    # Удаляем элементы корзины, для которых нет соответствующих продуктов
+    items_to_delete = []
     for item in cart_items:
-        logger.info(f"Обработка товара в корзине: ID {item.id}, product_id {item.product_id}, quantity {item.quantity}")
-
-        # Получаем продукт
-        product_result = await db.execute(
-            select(Product).where(Product.id == item.product_id)
-        )
-        product = product_result.scalar_one_or_none()
-
-        if not product:
+        if not item.product:
             logger.warning(f"Продукт с ID {item.product_id} не найден для элемента корзины {item.id}")
+            items_to_delete.append(item)
 
-        # Создаем словарь с данными элемента корзины, включая даты
-        item_dict = {
-            "id": item.id,
-            "user_id": item.user_id,
-            "product_id": item.product_id,
-            "quantity": item.quantity,
-            "created_at": item.created_at,
-            "updated_at": item.updated_at,
-            "product": {
-                "id": product.id,
-                "name": product.name,
-                "price": product.price,
-                "description": product.description,
-                "image_url": product.image_url
-            } if product else None
-        }
-        enriched_items.append(item_dict)
+    # Удаляем элементы без продуктов
+    if items_to_delete:
+        for item in items_to_delete:
+            await db.delete(item)
+        await db.commit()
+        logger.info(f"Удалено {len(items_to_delete)} элементов корзины без соответствующих продуктов")
+        # Обновляем список, удаляя удаленные элементы
+        cart_items = [item for item in cart_items if item not in items_to_delete]
 
-    logger.info(f"Возвращено {len(enriched_items)} элементов корзины для пользователя {telegram_id}")
-    return enriched_items
+    # Возвращаем объекты модели напрямую (теперь с загруженными продуктами)
+    logger.info(f"Возвращено {len(cart_items)} элементов корзины для пользователя {telegram_id}")
+    logger.info(f"Возвращено {cart_items[0].product.name}")
+    return cart_items
 
 
 @router.put("/update", response_model=CartItemResponse)
 async def update_cart_item(
         cart_item_update: CartItemUpdate,
+        product_id: int = Query(..., description="ID товара"),
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
         db: AsyncSession = Depends(get_db)
 ):
     """
     Обновляет количество товара в корзине
-    Использование: /update?telegram_id=123456789
+    Использование: /update?telegram_id=123456789&product_id=1
     """
     logger.info(
-        f"Обновление корзины для пользователя {telegram_id}: product_id={cart_item_update.product_id}, new_quantity={cart_item_update.quantity}")
+        f"Обновление корзины для пользователя {telegram_id}: product_id={product_id}, new_quantity={cart_item_update.quantity}")
 
     # Получаем пользователя
     user = await get_user_from_db(telegram_id, db)
     logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
-    result = await db.execute(
-        select(CartItem).where(
-            CartItem.product_id == cart_item_update.product_id,
-            CartItem.user_id == user.id
-        )
+    # Используем selectinload для загрузки связанного продукта
+    stmt = select(CartItem).options(
+        selectinload(CartItem.product)
+    ).where(
+        CartItem.product_id == product_id,
+        CartItem.user_id == user.id
     )
+
+    result = await db.execute(stmt)
     cart_item = result.scalar_one_or_none()
 
     if not cart_item:
-        logger.warning(
-            f"Элемент корзины с product_id {cart_item_update.product_id} не найден для пользователя {user.id}")
+        logger.warning(f"Элемент корзины с product_id {product_id} не найден для пользователя {user.id}")
         raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+    # Проверяем, существует ли продукт
+    if not cart_item.product:
+        logger.warning(f"Продукт с ID {product_id} не найден в базе данных, элемент корзины будет удален")
+        await db.delete(cart_item)
+        await db.commit()
+        raise HTTPException(status_code=404, detail="Продукт больше не доступен")
 
     logger.info(f"Найден элемент корзины: ID {cart_item.id}, текущее количество: {cart_item.quantity}")
 
@@ -213,7 +220,7 @@ async def update_cart_item(
             logger.info(f"Удаление товара из корзины (количество <= 0)")
             await db.delete(cart_item)
             await db.commit()
-            return {"detail": "Товар удален из корзины"}
+            raise HTTPException(status_code=200, detail="Товар удален из корзины")
         else:
             old_quantity = cart_item.quantity
             cart_item.quantity = cart_item_update.quantity
@@ -222,6 +229,8 @@ async def update_cart_item(
     await db.commit()
     await db.refresh(cart_item)
     logger.info(f"Корзина обновлена: ID {cart_item.id}, новое количество: {cart_item.quantity}")
+
+    # Теперь cart_item.product уже загружен через selectinload
     return cart_item
 
 
@@ -245,13 +254,7 @@ async def remove_from_cart(
         logger.error(f"Пользователь с telegram_id {telegram_id} не найден")
         raise
 
-    # Проверяем, какие товары есть в корзине пользователя
-    all_cart_items_result = await db.execute(
-        select(CartItem).where(CartItem.user_id == user.id)
-    )
-    all_cart_items = all_cart_items_result.scalars().all()
-    logger.info(f"Товары в корзине пользователя {telegram_id}: {[item.product_id for item in all_cart_items]}")
-
+    # Получаем элемент корзины
     result = await db.execute(
         select(CartItem).where(
             CartItem.product_id == product_id,
@@ -262,7 +265,7 @@ async def remove_from_cart(
 
     if not cart_item:
         logger.warning(f"Товар с product_id {product_id} не найден в корзине пользователя {user.id}")
-        raise HTTPException(status_code=404, detail="Товар не найден в корзине")
+        return {"detail": "Товар отсутствовал в корзине", "product_id": product_id}
 
     logger.info(
         f"Найден товар в корзине: ID {cart_item.id}, product_id {cart_item.product_id}, quantity {cart_item.quantity}")
@@ -289,9 +292,8 @@ async def clear_cart(
     logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
     # Находим все элементы корзины пользователя
-    result = await db.execute(
-        select(CartItem).where(CartItem.user_id == user.id)
-    )
+    stmt = select(CartItem).where(CartItem.user_id == user.id)
+    result = await db.execute(stmt)
     cart_items = result.scalars().all()
 
     logger.info(f"Найдено {len(cart_items)} элементов для удаления из корзины пользователя {telegram_id}")
@@ -354,13 +356,28 @@ async def get_cart_count(
     """
     user = await get_user_from_db(telegram_id, db)
 
-    result = await db.execute(
-        select(CartItem).where(CartItem.user_id == user.id)
-    )
+    # Используем selectinload для загрузки продуктов
+    stmt = select(CartItem).options(
+        selectinload(CartItem.product)
+    ).where(CartItem.user_id == user.id)
+
+    result = await db.execute(stmt)
     cart_items = result.scalars().all()
 
-    total_items = sum(item.quantity for item in cart_items)
-    unique_items = len(cart_items)
+    # Удаляем элементы с несуществующими продуктами
+    valid_items = []
+    for item in cart_items:
+        if item.product:
+            valid_items.append(item)
+        else:
+            # Удаляем элемент корзины без продукта
+            await db.delete(item)
+
+    if len(valid_items) < len(cart_items):
+        await db.commit()
+
+    total_items = sum(item.quantity for item in valid_items)
+    unique_items = len(valid_items)
 
     return {
         "telegram_id": telegram_id,
@@ -369,9 +386,11 @@ async def get_cart_count(
         "cart_items": [
             {
                 "product_id": item.product_id,
-                "quantity": item.quantity
+                "product_name": item.product.name if item.product else "Неизвестно",
+                "quantity": item.quantity,
+                "price": item.product.price if item.product else 0
             }
-            for item in cart_items
+            for item in valid_items
         ]
     }
 
@@ -379,7 +398,7 @@ async def get_cart_count(
 # Endpoint для массового обновления корзины
 @router.put("/batch-update")
 async def batch_update_cart(
-        updates: List[CartItemUpdate],
+        updates: List[CartItemBatchUpdate],
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
         db: AsyncSession = Depends(get_db)
 ):
@@ -389,17 +408,29 @@ async def batch_update_cart(
     user = await get_user_from_db(telegram_id, db)
     results = []
 
+    # Получаем текущую корзину с загруженными продуктами
+    stmt = select(CartItem).options(
+        selectinload(CartItem.product)
+    ).where(CartItem.user_id == user.id)
+
+    result = await db.execute(stmt)
+    existing_items = {item.product_id: item for item in result.scalars().all()}
+
     for update in updates:
-        result = await db.execute(
-            select(CartItem).where(
-                CartItem.product_id == update.product_id,
-                CartItem.user_id == user.id
-            )
-        )
-        cart_item = result.scalar_one_or_none()
+        cart_item = existing_items.get(update.product_id)
 
         if cart_item:
-            if update.quantity and update.quantity > 0:
+            if cart_item.product is None:
+                # Продукт был удален из базы, удаляем запись из корзины
+                logger.warning(
+                    f"Продукт с ID {update.product_id} не найден в базе данных, элемент корзины будет удален")
+                await db.delete(cart_item)
+                results.append({
+                    "product_id": update.product_id,
+                    "status": "product_not_found_and_removed",
+                    "message": "Продукт больше не доступен и был удален из корзины"
+                })
+            elif update.quantity and update.quantity > 0:
                 cart_item.quantity = update.quantity
                 results.append({
                     "product_id": update.product_id,
@@ -413,26 +444,30 @@ async def batch_update_cart(
                     "status": "removed"
                 })
         else:
-            # Если товара нет в корзине, но quantity > 0 - добавляем
-            if update.quantity and update.quantity > 0:
-                # Проверяем существование товара
-                product_result = await db.execute(
-                    select(Product).where(Product.id == update.product_id)
-                )
-                product = product_result.scalar_one_or_none()
+            # Проверяем, существует ли продукт
+            product_result = await db.execute(
+                select(Product).where(Product.id == update.product_id)
+            )
+            product = product_result.scalar_one_or_none()
 
-                if product:
-                    new_item = CartItem(
-                        user_id=user.id,
-                        product_id=update.product_id,
-                        quantity=update.quantity
-                    )
-                    db.add(new_item)
-                    results.append({
-                        "product_id": update.product_id,
-                        "status": "added",
-                        "quantity": update.quantity
-                    })
+            if update.quantity and update.quantity > 0 and product:
+                new_item = CartItem(
+                    user_id=user.id,
+                    product_id=update.product_id,
+                    quantity=update.quantity
+                )
+                db.add(new_item)
+                results.append({
+                    "product_id": update.product_id,
+                    "status": "added",
+                    "quantity": update.quantity
+                })
+            elif update.quantity and update.quantity > 0 and not product:
+                results.append({
+                    "product_id": update.product_id,
+                    "status": "product_not_found",
+                    "message": "Продукт не найден в базе данных"
+                })
 
     await db.commit()
 

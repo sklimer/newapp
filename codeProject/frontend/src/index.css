@@ -207,6 +207,31 @@ body {
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
+.cart-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.refresh-button {
+  padding: 0.75rem 1rem;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.refresh-button:hover {
+  background-color: #2980b9;
+}
+
+.refresh-button:disabled {
+  background-color: #bdc3c7;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .summary-row {
   display: flex;
   justify-content: space-between;
