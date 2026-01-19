@@ -76,7 +76,7 @@ async def create_order(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Verify that the order is being created by the same user as in Telegram
-    if str(user.telegram_id) != str(user_data['id']):
+    if user.telegram_id != int(user_data['id']):
         raise HTTPException(status_code=403, detail="Unauthorized to create order for this user")
 
     # Generate unique order number

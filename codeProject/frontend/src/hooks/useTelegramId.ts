@@ -10,11 +10,20 @@ export const useTelegramId = () => {
   useEffect(() => {
     const fetchTelegramId = () => {
       try {
-        const initData = window.Telegram?.WebApp?.initData;
+        // Проверяем наличие Telegram WebApp объекта
+        if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+          const initData = window.Telegram?.WebApp?.initData;
 
-        if (initData) {
-          const id = userApi.getTelegramID(initData);
-          setTelegramId(id);
+          if (initData) {
+            const id = userApi.getTelegramID(initData);
+            if (id) {
+              setTelegramId(id);
+            } else {
+              setError('Не удалось получить Telegram ID из initData');
+            }
+          } else {
+            setError('Telegram WebApp initData не доступен');
+          }
         } else {
           setError('Telegram WebApp не инициализирован');
         }
@@ -26,7 +35,10 @@ export const useTelegramId = () => {
       }
     };
 
-    fetchTelegramId();
+    // Добавляем небольшую задержку для предотвращения проблем с инициализацией
+    const timer = setTimeout(fetchTelegramId, 100);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const refreshTelegramId = () => {
@@ -34,10 +46,20 @@ export const useTelegramId = () => {
     setError(null);
 
     try {
-      const initData = window.Telegram?.WebApp?.initData;
-      if (initData) {
-        const id = userApi.getTelegramID(initData);
-        setTelegramId(id);
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        const initData = window.Telegram?.WebApp?.initData;
+        if (initData) {
+          const id = userApi.getTelegramID(initData);
+          if (id) {
+            setTelegramId(id);
+          } else {
+            setError('Не удалось получить Telegram ID из initData');
+          }
+        } else {
+          setError('Telegram WebApp initData не доступен');
+        }
+      } else {
+        setError('Telegram WebApp не инициализирован');
       }
     } catch (err) {
       setError('Ошибка при обновлении Telegram ID');

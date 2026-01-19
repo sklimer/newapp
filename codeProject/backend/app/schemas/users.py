@@ -4,7 +4,7 @@ from datetime import datetime
 
 
 class UserBase(BaseModel):
-    telegram_id: str
+    telegram_id: int
     username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None

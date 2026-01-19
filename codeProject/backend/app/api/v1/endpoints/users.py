@@ -137,7 +137,7 @@ async def telegram_auth(
     # Check if user already exists
     result = await db.execute(
         UserModel.__table__.select()
-        .where(UserModel.telegram_id == str(user_data['id']))
+        .where(UserModel.telegram_id == int(user_data['id']))
     )
     user = result.fetchone()
     
@@ -158,7 +158,7 @@ async def telegram_auth(
     else:
         # Create new user
         user_create_data = {
-            'telegram_id': str(user_data['id']),
+            'telegram_id': int(user_data['id']),
             'first_name': user_data.get('first_name'),
             'last_name': user_data.get('last_name'),
             'username': user_data.get('username'),

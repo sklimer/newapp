@@ -91,7 +91,7 @@ async def create_payment(
         raise HTTPException(status_code=404, detail="User not found")
 
     # Verify that the payment is being created by the same user as in Telegram
-    if str(user.telegram_id) != str(user_data['id']):
+    if user.telegram_id != int(user_data['id']):
         raise HTTPException(status_code=403, detail="Unauthorized to create payment for this user")
 
     # If payment method is bonus, verify user has enough bonus balance
@@ -286,7 +286,7 @@ async def process_bonus_payment(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if str(user.telegram_id) != str(user_data['id']):
+    if user.telegram_id != int(user_data['id']):
         raise HTTPException(status_code=403, detail="Unauthorized to process bonus payment for this user")
 
     # Validate order exists

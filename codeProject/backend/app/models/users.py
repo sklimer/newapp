@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Numeric, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, Numeric, ForeignKey, BigInteger
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import declarative_base
@@ -12,7 +12,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: int = Column(Integer, primary_key=True, index=True)
-    telegram_id: str = Column(String, unique=True, index=True, nullable=False)
+    telegram_id: int = Column(BigInteger, unique=True, index=True, nullable=False)
     username: Optional[str] = Column(String, unique=True, index=True, nullable=True)
     first_name: Optional[str] = Column(String, nullable=True)
     last_name: Optional[str] = Column(String, nullable=True)
