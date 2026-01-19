@@ -68,10 +68,12 @@ async def add_to_cart(
     Добавляет товар в корзину по telegram_id
     Использование: /add?telegram_id=123456789
     """
-    logger.info(f"Добавление в корзину для пользователя {telegram_id}")
+    logger.info(
+        f"Добавление в корзину для пользователя {telegram_id}: product_id={cart_item.product_id}, quantity={cart_item.quantity}")
 
     # Получаем пользователя
     user = await get_user_from_db(telegram_id, db)
+    logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
     # Проверяем, существует ли продукт
     product_result = await db.execute(
@@ -79,7 +81,10 @@ async def add_to_cart(
     )
     product = product_result.scalar_one_or_none()
     if not product:
+        logger.error(f"Товар с ID {cart_item.product_id} не найден в базе данных")
         raise HTTPException(status_code=404, detail="Товар не найден")
+
+    logger.info(f"Найден товар: {product.name}, цена: {product.price}")
 
     # Проверяем, есть ли уже такой товар в корзине у пользователя
     existing_item_result = await db.execute(
@@ -91,10 +96,11 @@ async def add_to_cart(
     existing_item = existing_item_result.scalar_one_or_none()
 
     if existing_item:
-        # Если товар уже есть в корзине, увеличиваем количество
+        old_quantity = existing_item.quantity
         existing_item.quantity += cart_item.quantity
         await db.commit()
         await db.refresh(existing_item)
+        logger.info(f"Обновлено количество товара в корзине: {old_quantity} -> {existing_item.quantity}")
         return existing_item
     else:
         # Создаем новый элемент корзины
@@ -106,6 +112,8 @@ async def add_to_cart(
         db.add(db_cart_item)
         await db.commit()
         await db.refresh(db_cart_item)
+        logger.info(
+            f"Новый товар добавлен в корзину: ID {db_cart_item.id}, product_id {db_cart_item.product_id}, quantity {db_cart_item.quantity}")
         return db_cart_item
 
 
@@ -122,27 +130,37 @@ async def get_cart(
 
     # Получаем пользователя
     user = await get_user_from_db(telegram_id, db)
+    logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
     result = await db.execute(
         select(CartItem).where(CartItem.user_id == user.id)
     )
     cart_items = result.scalars().all()
 
-    # Добавляем информацию о продуктах
+    logger.info(f"Найдено {len(cart_items)} товаров в корзине пользователя {telegram_id}")
+
+    # Добавляем информацию о продуктах и возвращаем объекты модели напрямую
     enriched_items = []
     for item in cart_items:
+        logger.info(f"Обработка товара в корзине: ID {item.id}, product_id {item.product_id}, quantity {item.quantity}")
+
         # Получаем продукт
         product_result = await db.execute(
             select(Product).where(Product.id == item.product_id)
         )
         product = product_result.scalar_one_or_none()
 
-        # Создаем словарь с данными элемента корзины
+        if not product:
+            logger.warning(f"Продукт с ID {item.product_id} не найден для элемента корзины {item.id}")
+
+        # Создаем словарь с данными элемента корзины, включая даты
         item_dict = {
             "id": item.id,
             "user_id": item.user_id,
             "product_id": item.product_id,
             "quantity": item.quantity,
+            "created_at": item.created_at,
+            "updated_at": item.updated_at,
             "product": {
                 "id": product.id,
                 "name": product.name,
@@ -153,6 +171,7 @@ async def get_cart(
         }
         enriched_items.append(item_dict)
 
+    logger.info(f"Возвращено {len(enriched_items)} элементов корзины для пользователя {telegram_id}")
     return enriched_items
 
 
@@ -166,10 +185,12 @@ async def update_cart_item(
     Обновляет количество товара в корзине
     Использование: /update?telegram_id=123456789
     """
-    logger.info(f"Обновление корзины для пользователя {telegram_id}")
+    logger.info(
+        f"Обновление корзины для пользователя {telegram_id}: product_id={cart_item_update.product_id}, new_quantity={cart_item_update.quantity}")
 
     # Получаем пользователя
     user = await get_user_from_db(telegram_id, db)
+    logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
     result = await db.execute(
         select(CartItem).where(
@@ -180,19 +201,27 @@ async def update_cart_item(
     cart_item = result.scalar_one_or_none()
 
     if not cart_item:
+        logger.warning(
+            f"Элемент корзины с product_id {cart_item_update.product_id} не найден для пользователя {user.id}")
         raise HTTPException(status_code=404, detail="Элемент корзины не найден")
+
+    logger.info(f"Найден элемент корзины: ID {cart_item.id}, текущее количество: {cart_item.quantity}")
 
     if cart_item_update.quantity is not None:
         if cart_item_update.quantity <= 0:
             # Если количество <= 0, удаляем элемент
+            logger.info(f"Удаление товара из корзины (количество <= 0)")
             await db.delete(cart_item)
             await db.commit()
             return {"detail": "Товар удален из корзины"}
         else:
+            old_quantity = cart_item.quantity
             cart_item.quantity = cart_item_update.quantity
+            logger.info(f"Обновление количества: {old_quantity} -> {cart_item.quantity}")
 
     await db.commit()
     await db.refresh(cart_item)
+    logger.info(f"Корзина обновлена: ID {cart_item.id}, новое количество: {cart_item.quantity}")
     return cart_item
 
 
@@ -209,7 +238,19 @@ async def remove_from_cart(
     logger.info(f"Удаление товара {product_id} из корзины пользователя {telegram_id}")
 
     # Получаем пользователя
-    user = await get_user_from_db(telegram_id, db)
+    try:
+        user = await get_user_from_db(telegram_id, db)
+        logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
+    except HTTPException:
+        logger.error(f"Пользователь с telegram_id {telegram_id} не найден")
+        raise
+
+    # Проверяем, какие товары есть в корзине пользователя
+    all_cart_items_result = await db.execute(
+        select(CartItem).where(CartItem.user_id == user.id)
+    )
+    all_cart_items = all_cart_items_result.scalars().all()
+    logger.info(f"Товары в корзине пользователя {telegram_id}: {[item.product_id for item in all_cart_items]}")
 
     result = await db.execute(
         select(CartItem).where(
@@ -220,10 +261,15 @@ async def remove_from_cart(
     cart_item = result.scalar_one_or_none()
 
     if not cart_item:
+        logger.warning(f"Товар с product_id {product_id} не найден в корзине пользователя {user.id}")
         raise HTTPException(status_code=404, detail="Товар не найден в корзине")
+
+    logger.info(
+        f"Найден товар в корзине: ID {cart_item.id}, product_id {cart_item.product_id}, quantity {cart_item.quantity}")
 
     await db.delete(cart_item)
     await db.commit()
+    logger.info(f"Товар {product_id} успешно удален из корзины пользователя {telegram_id}")
     return {"detail": "Товар успешно удален из корзины", "product_id": product_id}
 
 
@@ -240,6 +286,7 @@ async def clear_cart(
 
     # Получаем пользователя
     user = await get_user_from_db(telegram_id, db)
+    logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
     # Находим все элементы корзины пользователя
     result = await db.execute(
@@ -247,11 +294,18 @@ async def clear_cart(
     )
     cart_items = result.scalars().all()
 
+    logger.info(f"Найдено {len(cart_items)} элементов для удаления из корзины пользователя {telegram_id}")
+
     # Удаляем все элементы
+    deleted_items_count = 0
     for item in cart_items:
+        logger.info(f"Удаление элемента корзины: ID {item.id}, product_id {item.product_id}")
         await db.delete(item)
+        deleted_items_count += 1
 
     await db.commit()
+
+    logger.info(f"Корзина пользователя {telegram_id} очищена, удалено {deleted_items_count} элементов")
 
     return {
         "detail": "Корзина успешно очищена",
