@@ -10,13 +10,12 @@ from app.core.security import get_or_create_user_from_telegram
 from app.models.users import User
 from app.schemas.auth import TokenData
 
-
 security = HTTPBearer()
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncSession = Depends(get_db)
 ) -> User:
     """
     Получить текущего пользователя по токену
@@ -28,8 +27,8 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(
-            credentials.credentials, 
-            settings.SECRET_KEY, 
+            credentials.credentials,
+            settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
         user_id: str = payload.get("sub")
@@ -38,7 +37,7 @@ async def get_current_user(
         token_data = TokenData(user_id=user_id)
     except JWTError:
         raise credentials_exception
-    
+
     from sqlalchemy.future import select
     result = await db.execute(select(User).filter(User.id == token_data.user_id))
     user = result.scalar_one_or_none()
@@ -48,8 +47,8 @@ async def get_current_user(
 
 
 async def get_current_user_from_telegram(
-    request: Request,
-    db: AsyncSession = Depends(get_db)
+        request: Request,
+        db: AsyncSession = Depends(get_db)
 ) -> User:
     """
     Get current user from Telegram Web App data, creating if doesn't exist
@@ -57,15 +56,23 @@ async def get_current_user_from_telegram(
     # Check if request is coming from Telegram Web App
     from app.core.telegram import is_running_in_telegram_web_app
     if not is_running_in_telegram_web_app(request):
-        raise HTTPException(status_code=400, detail="Request must come from Telegram Web App")
-
-    # Get init data from header or query parameter
-    init_data = request.headers.get("x-telegram-web-app-init-data")
-    if not init_data:
-        # Try to get from form data or query parameters if not in header
-        init_data = request.query_params.get("initData")
+        # Instead of raising an exception here, let's check if there's valid init data
+        # Get init data from header or query parameter
+        init_data = request.headers.get("x-telegram-web-app-init-data")
         if not init_data:
-            raise HTTPException(status_code=400, detail="Missing Telegram init data")
+            # Try to get from form data or query parameters if not in header
+            init_data = request.query_params.get("initData")
+
+        # If still no init data, then raise exception
+        if not init_data:
+            raise HTTPException(status_code=400,
+                                detail="Request must come from Telegram Web App or include valid init data")
+
+    # Get init data from header or query parameter if not already obtained
+    init_data = request.headers.get("x-telegram-web-app-init-data") or request.query_params.get("initData")
+
+    if not init_data:
+        raise HTTPException(status_code=400, detail="Missing Telegram init data")
 
     # Validate the init data
     from app.core.telegram import validate_telegram_init_data, get_telegram_user_data

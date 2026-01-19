@@ -258,9 +258,6 @@ async def verify_telegram(
     }
 
 
-
-
-
 @router.post("/telegram-simple")
 async def telegram_simple_auth(
         request: Request,
@@ -309,3 +306,89 @@ async def telegram_simple_auth(
     except Exception as e:
         logger.error(f"Simple auth error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/get_telegram_id")
+async def get_telegram_id(request: Request):
+    """
+    Извлекает Telegram user_id из initData без верификации
+    Полезно для отладки и получения ID без создания пользователя в БД
+    """
+    logger.info("🔍 Parsing Telegram ID without verification")
+
+    try:
+        # Получаем initData из запроса
+        body = await request.json()
+        init_data_str = body.get("initData") or body.get("init_data")
+
+        if not init_data_str:
+            raise HTTPException(status_code=400, detail="No initData provided")
+
+        logger.info(f"📨 Parsing initData (truncated): {init_data_str[:100]}...")
+
+        # Парсим initData для поиска user
+        for pair in init_data_str.split('&'):
+            if pair.startswith('user='):
+                user_part = pair[5:]  # Берем часть после 'user='
+                user_json = unquote(user_part)
+
+                # Исправляем экранированные слеши
+                user_json = fix_escaped_slashes(user_json)
+
+                try:
+                    user_data = json.loads(user_json)
+                    telegram_id = user_data.get('id')
+                    username = user_data.get('username', 'No username')
+
+                    if telegram_id:
+                        logger.info(f"✅ Extracted Telegram ID: {telegram_id}, username: {username}")
+                        return {
+                            "success": True,
+                            "telegram_user_id": telegram_id,
+                            "telegram_username": username,
+                            "first_name": user_data.get('first_name'),
+                            "last_name": user_data.get('last_name'),
+                            "language_code": user_data.get('language_code'),
+                            "is_premium": user_data.get('is_premium', False),
+                            "photo_url": user_data.get('photo_url'),
+                            "raw_data": user_data,
+                            "note": "ID extracted without verification - use for debugging only"
+                        }
+                    else:
+                        logger.error("❌ No ID found in user data")
+                        raise HTTPException(status_code=400, detail="No user ID in data")
+
+                except json.JSONDecodeError as e:
+                    logger.error(f"❌ JSON decode error: {e}")
+                    raise HTTPException(status_code=400, detail="Invalid user JSON format")
+
+        # Если не нашли user параметр, ищем receiver (для мини-приложений в чатах)
+        for pair in init_data_str.split('&'):
+            if pair.startswith('receiver='):
+                receiver_part = pair[9:]  # Берем часть после 'receiver='
+                receiver_json = unquote(receiver_part)
+                receiver_json = fix_escaped_slashes(receiver_json)
+
+                try:
+                    receiver_data = json.loads(receiver_json)
+                    telegram_id = receiver_data.get('id')
+
+                    if telegram_id:
+                        logger.info(f"✅ Extracted Telegram ID from receiver: {telegram_id}")
+                        return {
+                            "success": True,
+                            "telegram_user_id": telegram_id,
+                            "source": "receiver",
+                            "raw_data": receiver_data
+                        }
+                except:
+                    pass
+
+        logger.error("❌ No user or receiver data found in initData")
+        raise HTTPException(status_code=400, detail="No user or receiver data found")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error parsing Telegram ID: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

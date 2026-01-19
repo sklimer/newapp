@@ -90,8 +90,42 @@ export const userApi = {
       // return apiClient.get(`/users/me?tgWebAppData=${encodeURIComponent(initData)}`);
     }
 
-    return apiClient.get('/users/me', config);
+    return apiClient.get('/auth/get_telegram_id', config);
   },
+    getTelegramID(initData?: string): number | null {
+  if (!initData) {
+    return null;
+  }
+
+  const params = initData.split('&');
+  let targetValue = null;
+
+  for (const param of params) {
+    const [key, ...rest] = param.split('=');
+    const value = rest.join('=');
+
+    if (key === 'user') {
+      targetValue = value;
+      break;
+    } else if (key === 'receiver') {
+      targetValue = value;
+    }
+  }
+
+  if (!targetValue) {
+    return null;
+  }
+
+  try {
+    const decodedValue = safeDecodeURIComponent(targetValue);
+    const fixedSlashes = decodedValue.replace(/\\\\\//g, '/');
+    const data = JSON.parse(fixedSlashes);
+    return data?.id || null;
+  } catch (error) {
+    console.error('Error parsing user data from initData:', error);
+    return null;
+  }
+}
 };
 
 export const menuApi = {
@@ -138,20 +172,63 @@ export const menuApi = {
 };
 
 export const cartApi = {
-  getCart: () =>
-    apiClient.get('/cart'),
+  // Получить корзину пользователя
+  getCart: async (telegramId: number) => {
+    return apiClient.get('/cart/', {
+      params: { telegram_id: telegramId }
+    });
+  },
 
-  addToCart: (itemData: { itemId: number; quantity: number }) =>
-    apiClient.post('/cart/add', itemData),
+  // Добавить товар в корзину
+  addToCart: async (productId: number, quantity: number, telegramId: number) => {
+    return apiClient.post('/cart/add', {
+      product_id: productId,
+      quantity: quantity
+    }, {
+      params: { telegram_id: telegramId }
+    });
+  },
 
-  updateCart: (itemId: number, quantity: number) =>
-    apiClient.put(`/cart/update/${itemId}`, { quantity }),
+  // Обновить количество товара
+  updateCart: async (productId: number, quantity: number, telegramId: number) => {
+    return apiClient.put('/cart/update', {
+      product_id: productId,
+      quantity: quantity
+    }, {
+      params: { telegram_id: telegramId }
+    });
+  },
 
-  removeFromCart: (itemId: number) =>
-    apiClient.delete(`/cart/remove/${itemId}`),
+  // Удалить товар из корзины
+  removeFromCart: async (productId: number, telegramId: number) => {
+    return apiClient.delete('/cart/remove', {
+      params: {
+        telegram_id: telegramId,
+        product_id: productId
+      }
+    });
+  },
 
-  clearCart: () =>
-    apiClient.delete('/cart/clear'),
+  // Очистить корзину
+  clearCart: async (telegramId: number) => {
+    return apiClient.delete('/cart/clear', {
+      params: { telegram_id: telegramId }
+    });
+  },
+
+  // Получить количество товаров в корзине
+  getCartCount: async (telegramId: number) => {
+    return apiClient.get('/cart/count', {
+      params: { telegram_id: telegramId }
+    });
+  },
+
+  // Массовое обновление корзины
+  batchUpdateCart: async (updates: Array<{product_id: number, quantity: number}>, telegramId: number) => {
+    return apiClient.put('/cart/batch-update', updates, {
+      params: { telegram_id: telegramId }
+    });
+  }
 };
 
 export const orderApi = {
