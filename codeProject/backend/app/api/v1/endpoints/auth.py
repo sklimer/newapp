@@ -258,55 +258,7 @@ async def verify_telegram(
     }
 
 
-@router.post("/telegram-debug")
-async def telegram_debug(request: Request):
-    """Эндпоинт для отладки"""
-    try:
-        body = await request.json()
-        init_data_str = body.get("initData", "")
 
-        if not init_data_str:
-            return {"error": "No initData"}
-
-        # Парсим
-        encoded_params, decoded_params = TelegramInitDataValidator.parse_init_data(init_data_str)
-
-        # Строим data_check_string
-        data_check_string = TelegramInitDataValidator.build_data_check_string(encoded_params)
-
-        # Пробуем разные токены
-        test_tokens = [
-            TELEGRAM_BOT_TOKEN,
-            "6700097759:AAHJgbMFkgOBYv13NfTKoYFmhnn9kx-1npo",  # Ваш текущий
-            "6700097759:AAHJgbMFkgOBYv13NfTKoYFmhnn9kx-1npo".replace(':', ':A'),  # Модифицированный
-        ]
-
-        results = {}
-        for i, token in enumerate(test_tokens):
-            if token:
-                hash_result = TelegramInitDataValidator.compute_telegram_hash(data_check_string, token)
-                results[f"token_{i}"] = {
-                    "hash": hash_result,
-                    "matches": hash_result == decoded_params.get('hash', ''),
-                    "token_preview": f"{token[:10]}...{token[-10:]}" if len(token) > 20 else token
-                }
-
-        return {
-            "parameters": list(decoded_params.keys()),
-            "has_signature": 'signature' in decoded_params,
-            "auth_date": decoded_params.get('auth_date'),
-            "user_id": decoded_params.get('user_parsed', {}).get('id') if 'user_parsed' in decoded_params else None,
-            "data_check_string_preview": data_check_string[:200] + "..." if len(
-                data_check_string) > 200 else data_check_string,
-            "data_check_string_length": len(data_check_string),
-            "hash_results": results,
-            "received_hash": decoded_params.get('hash', ''),
-            "has_escaped_slashes": any('\\/' in str(v) for v in decoded_params.values())
-        }
-
-    except Exception as e:
-        logger.error(f"Debug error: {e}", exc_info=True)
-        return {"error": str(e)}
 
 
 @router.post("/telegram-simple")
