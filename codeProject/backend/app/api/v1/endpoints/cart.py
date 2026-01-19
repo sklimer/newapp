@@ -13,7 +13,7 @@ from app.schemas.users import UserResponse
 router = APIRouter()
 
 
-@router.post("/", response_model=CartItemResponse)
+@router.post("/add", response_model=CartItemResponse)
 async def add_to_cart(
     cart_item: CartItemCreate,
     db: AsyncSession = Depends(get_db),
@@ -90,7 +90,7 @@ async def update_cart_item(
             # Если количество <= 0, удаляем элемент
             await db.delete(cart_item)
             await db.commit()
-            raise HTTPException(status_code=200, detail="Cart item removed")
+            return {"detail": "Cart item removed"}
         else:
             cart_item.quantity = cart_item_update.quantity
     
