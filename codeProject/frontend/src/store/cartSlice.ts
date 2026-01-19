@@ -16,6 +16,7 @@ interface CartState {
   isOpen: boolean;
   loading: boolean;
   error: string | null;
+  isSyncedWithServer: boolean; // Flag to indicate if cart has been synced with server
 }
 
 // Load cart from localStorage on initialization
@@ -32,11 +33,13 @@ const loadCartFromStorage = (): CartItem[] => {
 };
 
 // Initial state - new users should have an empty cart
+// We'll initialize with localStorage data but the GlobalCartSync will override it if user is authenticated
 const initialState: CartState = {
-  items: loadCartFromStorage(),
+  items: loadCartFromStorage(), // Keep this for non-authenticated users
   isOpen: false,
   loading: false,
   error: null,
+  isSyncedWithServer: false, // Initially not synced with server
 };
 
 const cartSlice = createSlice({
@@ -107,6 +110,7 @@ const cartSlice = createSlice({
     // Set cart items from external source (like server sync)
     setCartItems: (state, action: PayloadAction<CartItem[]>) => {
       state.items = action.payload;
+      state.isSyncedWithServer = true; // Mark as synced with server
 
       // Save to localStorage after modification
       localStorage.setItem('cart', JSON.stringify(state.items));
@@ -120,6 +124,11 @@ const cartSlice = createSlice({
     // Set error state
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
+    },
+
+    // Reset sync status
+    resetSyncStatus: (state) => {
+      state.isSyncedWithServer = false;
     }
   },
 });
@@ -134,7 +143,8 @@ export const {
   closeCart,
   setCartItems,
   setLoading,
-  setError
+  setError,
+  resetSyncStatus
 } = cartSlice.actions;
 
 // Async thunks for server synchronization
