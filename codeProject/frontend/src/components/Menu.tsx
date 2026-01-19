@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { addItem } from '../store/cartSlice';
+import { syncAddToCart } from '../store/cartSlice';
 import { menuApi } from '../api/api';
 import { Category, Product } from '../types/types';
 
@@ -69,7 +69,7 @@ const Menu: React.FC = () => {
 
   const addToCart = (item: MenuItem) => {
     // Dispatch action to add item to cart
-    dispatch(addItem({ id: item.id, name: item.name, price: item.price }));
+    dispatch(syncAddToCart({ item: { id: item.id, name: item.name, price: item.price }, quantity: 1 }));
   };
 
   if (loading) {

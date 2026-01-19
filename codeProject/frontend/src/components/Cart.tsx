@@ -1,155 +1,74 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Link } from 'react-router-dom';
-import { selectCartItems, updateQuantity, removeItem } from '../store/cartSlice';
+import { RootState, AppDispatch } from '../store';
+import { updateQuantity, removeItem } from '../store/cartSlice';
+import { updateCartItem, removeFromCart } from '../services/cartApi';
 
-interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
+const Cart = () => {
+  const { items, status } = useSelector((state: RootState) => state.cart);
+  const dispatch = useDispatch<AppDispatch>();
 
-const Cart: React.FC = () => {
-  const cartItems = useSelector(selectCartItems);
-  const dispatch = useDispatch();
-  
-  const [deliveryOption, setDeliveryOption] = useState<'delivery' | 'pickup'>('delivery');
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash'>('card');
-  const [bonusAmount, setBonusAmount] = useState<number>(0);
-
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const deliveryFee = deliveryOption === 'delivery' ? 3.99 : 0; // Mock delivery fee
-  const bonusDiscount = Math.min(bonusAmount, subtotal); // Bonus can't exceed subtotal
-  const total = subtotal + deliveryFee - bonusDiscount;
-
-  const handleUpdateQuantity = (id: number, newQuantity: number) => {
+  const handleQuantityChange = async (product_id: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      dispatch(removeItem(id));
-    } else {
-      dispatch(updateQuantity({ id, quantity: newQuantity }));
+      await handleRemoveItem(product_id);
+      return;
+    }
+
+    try {
+      await updateCartItem(product_id, { quantity: newQuantity });
+      dispatch(updateQuantity({ product_id, quantity: newQuantity }));
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
     }
   };
 
-  const handleRemoveItem = (id: number) => {
-    dispatch(removeItem(id));
+  const handleRemoveItem = async (product_id: number) => {
+    try {
+      await removeFromCart(product_id);
+      dispatch(removeItem(product_id));
+    } catch (error) {
+      console.error('Failed to remove item:', error);
+    }
   };
+
+  const getTotalPrice = () => {
+    return items.reduce((total, item) => total + (item.price * item.quantity), 0);
+  };
+
+  if (status === 'loading') {
+    return <div>Загрузка корзины...</div>;
+  }
+
+  if (items.length === 0) {
+    return <div>Корзина пуста</div>;
+  }
 
   return (
     <div className="cart">
-      <div className="cart-items">
-        {cartItems.map(item => (
-          <div key={item.id} className="cart-item">
-            <div className="item-details">
-              <h3>{item.name}</h3>
-              <p>${item.price.toFixed(2)} each</p>
-            </div>
-            <div className="quantity-controls">
-              <button 
-                onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                disabled={item.quantity <= 1}
-              >
-                -
-              </button>
-              <span>{item.quantity}</span>
-              <button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}>+</button>
-              <button className="remove-item-btn" onClick={() => handleRemoveItem(item.id)}>Remove</button>
-            </div>
-            <div className="item-total">
-              ${(item.price * item.quantity).toFixed(2)}
-            </div>
-          </div>
+      <h2>Корзина</h2>
+      <ul>
+        {items.map((item) => (
+          <li key={item.product_id} className="cart-item">
+            <span>{item.name} - {item.price} ₽ x </span>
+            <input
+              type="number"
+              min="1"
+              value={item.quantity}
+              onChange={(e) => handleQuantityChange(item.product_id, parseInt(e.target.value))}
+              style={{ width: '60px', marginRight: '10px' }}
+            />
+            <span>= {item.price * item.quantity} ₽</span>
+            <button
+              onClick={() => handleRemoveItem(item.product_id)}
+              style={{ marginLeft: '10px' }}
+            >
+              Удалить
+            </button>
+          </li>
         ))}
-      </div>
-
-      <div className="cart-summary">
-        <h2>Order Summary</h2>
-        
-        <div className="summary-row">
-          <span>Subtotal:</span>
-          <span>${subtotal.toFixed(2)}</span>
-        </div>
-        
-        <div className="summary-row">
-          <span>Delivery Fee:</span>
-          <span>${deliveryFee.toFixed(2)}</span>
-        </div>
-        
-        <div className="summary-row bonus-section">
-          <label htmlFor="bonus-input">Bonus Amount:</label>
-          <input
-            id="bonus-input"
-            type="number"
-            min="0"
-            max={Math.floor(subtotal)}
-            value={bonusAmount}
-            onChange={(e) => setBonusAmount(Math.min(Number(e.target.value), Math.floor(subtotal)))}
-          />
-        </div>
-        
-        {bonusDiscount > 0 && (
-          <div className="summary-row discount">
-            <span>Bonus Discount:</span>
-            <span>-${bonusDiscount.toFixed(2)}</span>
-          </div>
-        )}
-        
-        <div className="summary-row total">
-          <strong>Total:</strong>
-          <strong>${total.toFixed(2)}</strong>
-        </div>
-        
-        <div className="delivery-options">
-          <h3>Delivery Option</h3>
-          <div className="option-group">
-            <label>
-              <input
-                type="radio"
-                name="delivery"
-                checked={deliveryOption === 'delivery'}
-                onChange={() => setDeliveryOption('delivery')}
-              />
-              Delivery (+${deliveryFee.toFixed(2)})
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="delivery"
-                checked={deliveryOption === 'pickup'}
-                onChange={() => setDeliveryOption('pickup')}
-              />
-              Pickup (Free)
-            </label>
-          </div>
-        </div>
-        
-        <div className="payment-methods">
-          <h3>Payment Method</h3>
-          <div className="option-group">
-            <label>
-              <input
-                type="radio"
-                name="payment"
-                checked={paymentMethod === 'card'}
-                onChange={() => setPaymentMethod('card')}
-              />
-              Card (Online)
-            </label>
-            <label>
-              <input
-                type="radio"
-                name="payment"
-                checked={paymentMethod === 'cash'}
-                onChange={() => setPaymentMethod('cash')}
-              />
-              Cash on Delivery
-            </label>
-          </div>
-        </div>
-        
-        <Link to="/payment" className="checkout-btn">
-          Proceed to Checkout
-        </Link>
+      </ul>
+      <div className="cart-total">
+        <strong>Итого: {getTotalPrice()} ₽</strong>
       </div>
     </div>
   );
