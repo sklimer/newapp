@@ -20,8 +20,12 @@ def validate_telegram_init_data(init_data: str) -> bool:
     https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
     """
     try:
+        # Check if init_data is empty or None
+        if not init_data:
+            raise HTTPException(status_code=400, detail="Init data is empty")
+            
         # Parse the init data
-        logger.info(init_data)
+        logger.info(f"Validating init data: {init_data[:50]}...")
         parsed_params = dict(urllib.parse.parse_qsl(init_data))
 
         # Get the received hash
@@ -37,6 +41,10 @@ def validate_telegram_init_data(init_data: str) -> bool:
         data_check_string = '\n'.join(items_to_sign)
 
         # Create secret key using HMAC-SHA256 with the string "WebAppData" and bot token
+        # Ensure bot token exists
+        if not settings.TELEGRAM_BOT_TOKEN:
+            raise HTTPException(status_code=400, detail="Telegram bot token not configured")
+            
         secret_key = hmac.new(
             b'WebAppData',
             settings.TELEGRAM_BOT_TOKEN.encode(),
@@ -78,13 +86,21 @@ def get_telegram_user_data(init_data: str) -> Dict[str, Any]:
     Extracts user data from Telegram init data after validation
     """
     try:
+        # Validate that init_data is not empty
+        if not init_data:
+            raise HTTPException(status_code=400, detail="Init data is empty")
+            
         parsed_params = dict(urllib.parse.parse_qsl(init_data))
         user_data_str = parsed_params.get('user')
         if not user_data_str:
             raise HTTPException(status_code=400, detail="No user data found")
 
+        # Safely decode URL-encoded user data
+        user_data_str = urllib.parse.unquote(user_data_str)
         user_data = json.loads(user_data_str)
         return user_data
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Could not parse user data as JSON: {e}")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Could not extract user data: {e}")
 
