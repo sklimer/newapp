@@ -1,50 +1,40 @@
-```
-# Compiled and build artifacts
-DATA/
-codeProject/.idea
-codeProject/frontend/node_modules
-codeProject/README.md
-*.pyc
-__pycache__/
-*.o
-*.obj
-*.so
-*.dll
-*.exe
-*.class
-*.out
-
+```gitignore
 # Dependencies
 node_modules/
-venv/
-.venv/
-.env
-.env.local
-.env.*
+
+# Build outputs
+dist/
+build/
+*.js
+*.ts
+*.tsx
 
 # Logs and temp files
 *.log
 *.tmp
 *.swp
-*.swo
+
+# Environment
+.env
+.env.local
+.env.*
 
 # Editors
 .vscode/
 .idea/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 # Coverage
-.coverage
 coverage/
 htmlcov/
+.coverage
 
-# Build directories
-dist/
-build/
-target/
-.pytest_cache/
-.mypy_cache/
-
-# System files
+# OS
 .DS_Store
 Thumbs.db
 ```
