@@ -12,11 +12,11 @@ load_dotenv()
 class Settings(BaseSettings):
     # Database settings
     DATABASE_URL: str = Field(
-        default=os.getenv("DATABASE_URL", "postgresql://postgres:admin@localhost/res_db"),
+        default=os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql://postgres:admin@localhost/res_db")),
         description="PostgreSQL connection URL"
     )
     ASYNC_DATABASE_URL: str = Field(
-        default=os.getenv("ASYNC_DATABASE_URL", "postgresql+asyncpg://postgres:admin@localhost/res_db"),
+        default=os.getenv("ASYNC_DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql+asyncpg://postgres:admin@localhost/res_db")),
         description="PostgreSQL async connection URL"
     )
 

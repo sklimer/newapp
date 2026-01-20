@@ -9,20 +9,22 @@ Base = declarative_base()
 # SQLAlchemy sync engine (синхронный движок)
 sync_engine = create_engine(
     settings.DATABASE_URL,
-    pool_size=20,  # Размер пула соединений
-    max_overflow=30,  # Максимальное количество соединений сверх pool_size
+    pool_size=5,  # Размер пула соединений
+    max_overflow=10,  # Максимальное количество соединений сверх pool_size
     pool_pre_ping=True,  # Проверка соединения перед использованием
-    pool_recycle=3600,  # Пересоздание соединений каждый час
+    pool_recycle=300,  # Пересоздание соединений каждые 5 минут
+    pool_timeout=20,  # Таймаут ожидания соединения
     echo=False  # Логирование SQL запросов (True для отладки)
 )
 
 # SQLAlchemy async engine (асинхронный движок)
 async_engine = create_async_engine(
     settings.ASYNC_DATABASE_URL,
-    pool_size=20,
-    max_overflow=30,
+    pool_size=5,
+    max_overflow=10,
     pool_pre_ping=True,
-    pool_recycle=3600,
+    pool_recycle=300,
+    pool_timeout=20,
     echo=False
 )
 
