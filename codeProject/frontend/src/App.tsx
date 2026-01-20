@@ -1,10 +1,10 @@
 import React from 'react';
 import { Provider } from 'react-redux';
+import { BrowserRouter } from 'react-router-dom';
 import { store } from './store/store';
-import Menu from './components/Menu';
-import Cart from './components/Cart';
+import Header from './components/Header';
+import RouterComponent from './router/Router';
 import GlobalCartSync from './components/GlobalCartSync';
-// import './App.css';
 
 // Error boundary component
 class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
@@ -41,17 +41,16 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
 const AppContent = () => {
   return (
     <GlobalCartSync>
-      <div className="App">
-        <header className="App-header">
-          <h1>Меню</h1>
-        </header>
-        <main>
-          <div className="content-wrapper">
-            <Menu />
-            <Cart />
-          </div>
-        </main>
-      </div>
+      <BrowserRouter>
+        <div className="App">
+          <Header />
+          <main>
+            <div className="content-wrapper">
+              <RouterComponent />
+            </div>
+          </main>
+        </div>
+      </BrowserRouter>
     </GlobalCartSync>
   );
 };
