@@ -9,7 +9,7 @@ from app.api.version_selector import register_api_versions, APIVersion
 from app.core.config import settings
 from app.core.database import engine
 from app.core.middleware import TelegramWebAppMiddleware
-from app.core.security import get_or_create_user_from_telegram
+
 from app.api.deps import get_db
 
 # Настройка логирования
