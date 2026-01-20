@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import yookassa
@@ -9,11 +9,11 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.core.security import require_telegram_auth, require_telegram_web_app
 from app.schemas.payments import Payment, PaymentCreate, PaymentUpdate, CreatePaymentRequest, PaymentResponse
 from app.models.payments import Payment as PaymentModel
 from app.models.orders import Order as OrderModel
 from app.models.users import User as UserModel
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -23,17 +23,15 @@ Configuration.configure(settings.YOOKASSA_SHOP_ID, settings.YOOKASSA_API_KEY)
 
 @router.get("/", response_model=List[Payment])
 async def get_payments(
-        request: Request,
         db: AsyncSession = Depends(get_db),
         skip: int = 0,
         limit: int = 100,
         user_id: int = None,
         order_id: int = None,
-        is_telegram=Depends(require_telegram_web_app())
+        current_user = Depends(get_current_user)
 ):
     """Get all payments with optional filters"""
     query = PaymentModel.__table__.select()
-    logging.info(f'is_telegram= {is_telegram}')
     if user_id:
         query = query.where(PaymentModel.user_id == user_id)
     if order_id:
@@ -49,9 +47,8 @@ async def get_payments(
 @router.get("/{payment_id}", response_model=Payment)
 async def get_payment(
         payment_id: int,
-        request: Request,
         db: AsyncSession = Depends(get_db),
-        is_telegram=Depends(require_telegram_web_app())
+        current_user = Depends(get_current_user)
 ):
     """Get a specific payment by ID"""
     result = await db.execute(
@@ -67,9 +64,8 @@ async def get_payment(
 @router.post("/", response_model=Payment)
 async def create_payment(
         payment: PaymentCreate,
-        request: Request,
         db: AsyncSession = Depends(get_db),
-        user_data: dict = Depends(require_telegram_auth())
+        current_user = Depends(get_current_user)
 ):
     """Create a new payment"""
     # Validate order exists
@@ -90,8 +86,8 @@ async def create_payment(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Verify that the payment is being created by the same user as in Telegram
-    if user.telegram_id != int(user_data['id']):
+    # Verify that the payment is being created by the authenticated user
+    if user.id != current_user.id:
         raise HTTPException(status_code=403, detail="Unauthorized to create payment for this user")
 
     # If payment method is bonus, verify user has enough bonus balance
@@ -110,9 +106,8 @@ async def create_payment(
 async def update_payment(
         payment_id: int,
         payment_update: PaymentUpdate,
-        request: Request,
         db: AsyncSession = Depends(get_db),
-        is_telegram=Depends(require_telegram_web_app())
+        current_user = Depends(get_current_user)
 ):
     """Update a payment"""
     result = await db.execute(
@@ -122,6 +117,10 @@ async def update_payment(
     db_payment = result.fetchone()
     if not db_payment:
         raise HTTPException(status_code=404, detail="Payment not found")
+
+    # Check if the user has permission to update this payment
+    if db_payment.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this payment")
 
     update_data = payment_update.dict(exclude_unset=True)
     await db.execute(
@@ -142,9 +141,8 @@ async def update_payment(
 @router.post("/create-yookassa-payment")
 async def create_yookassa_payment(
         request_data: CreatePaymentRequest,
-        request: Request,
         db: AsyncSession = Depends(get_db),
-        is_telegram=Depends(require_telegram_web_app())
+        current_user = Depends(get_current_user)
 ):
     """Create a YooKassa payment"""
     # Validate order exists
@@ -155,6 +153,10 @@ async def create_yookassa_payment(
     order = order_result.fetchone()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    # Verify that the payment is being created by the authenticated user
+    if order.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to create payment for this order")
 
     # Create YooKassa payment
     idempotence_key = str(uuid.uuid4())
@@ -272,21 +274,12 @@ async def process_bonus_payment(
         order_id: int,
         user_id: int,
         amount: float,
-        request: Request,
         db: AsyncSession = Depends(get_db),
-        user_data: dict = Depends(require_telegram_auth())
+        current_user = Depends(get_current_user)
 ):
     """Process a bonus payment"""
-    # Verify that the payment is being processed by the same user as in Telegram
-    user_result = await db.execute(
-        UserModel.__table__.select()
-        .where(UserModel.id == user_id)
-    )
-    user = user_result.fetchone()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if user.telegram_id != int(user_data['id']):
+    # Verify that the payment is being processed by the authenticated user
+    if user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Unauthorized to process bonus payment for this user")
 
     # Validate order exists
@@ -298,7 +291,16 @@ async def process_bonus_payment(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Validate user exists and has enough bonus balance
+    # Validate user exists
+    user_result = await db.execute(
+        UserModel.__table__.select()
+        .where(UserModel.id == user_id)
+    )
+    user = user_result.fetchone()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Validate user has enough bonus balance
     if user.bonus_balance < amount:
         raise HTTPException(status_code=400, detail="Insufficient bonus balance")
 

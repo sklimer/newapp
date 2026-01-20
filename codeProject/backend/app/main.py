@@ -9,7 +9,6 @@ from app.api.version_selector import register_api_versions, APIVersion
 from app.core.config import settings
 from app.core.database import engine
 from app.core.middleware import TelegramWebAppMiddleware
-from app.core.security import get_or_create_user_from_telegram
 from app.api.deps import get_db
 
 # Настройка логирования
@@ -48,7 +47,7 @@ app = FastAPI(
 )
 
 # Middleware
-# 1. Telegram Web App middleware (первый, чтобы обрабатывать входящие запросы)
+# 1. Telegram Web App middleware (first, to handle incoming requests)
 app.add_middleware(TelegramWebAppMiddleware)
 
 # 2. CORS middleware
@@ -62,10 +61,10 @@ app.add_middleware(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://newapp-c2js.onrender.com",  # Домен вашего frontend на Vercel
-        "https://*.onrender.com",  # Для Preview-деплоев
-        "https://newapp-six-green.vercel.app",  # Для Preview-деплоев
-        "https://*.vercel.app",  # Для Preview-деплоев
+        "https://newapp-c2js.onrender.com",  # Frontend domain on Vercel
+        "https://*.onrender.com",  # For Preview deployments
+        "https://newapp-six-green.vercel.app",  # For Preview deployments
+        "https://*.vercel.app",  # For Preview deployments
         "http://localhost:5173"
     ],
     allow_credentials=True,

@@ -1,7 +1,6 @@
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
-from .telegram import is_running_in_telegram_web_app
 
 
 class TelegramWebAppMiddleware(BaseHTTPMiddleware):
@@ -25,13 +24,9 @@ class TelegramWebAppMiddleware(BaseHTTPMiddleware):
         is_restricted_path = any(path.startswith(restricted_path) for restricted_path in self.restricted_paths)
 
         if is_restricted_path:
-            # Import here to avoid circular imports
-            from .telegram import is_running_in_telegram_web_app
-            if not is_running_in_telegram_web_app(request):
-                return JSONResponse(
-                    status_code=400,
-                    content={"detail": "This endpoint is only accessible from Telegram Web App"}
-                )
+            # For now, we're allowing all requests since we removed Telegram validation
+            # If you need Telegram validation, you'd need to implement it differently
+            pass
 
         try:
             response = await call_next(request)
