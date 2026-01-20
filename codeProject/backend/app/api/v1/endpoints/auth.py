@@ -388,7 +388,7 @@ async def verify_telegram(
 
         # Создаем/получаем пользователя
         logger.info("👤 Step 2: Creating/getting user from database...")
-        user = await get_or_create_user_from_telegram(telegram_data['user'], db)
+        user = await get_or_create_user_from_telegram_sync(telegram_data['user'], db)
 
         if not user:
             logger.error("❌ Failed to create user in database")
@@ -473,7 +473,7 @@ async def telegram_simple_auth(
 
                     # Создаем пользователя
                     logger.info("💾 Creating/getting user from database...")
-                    user = await get_or_create_user_from_telegram(user_data, db)
+                    user = await get_or_create_user_from_telegram_sync(user_data, db)
 
                     if not user:
                         logger.error("❌ Failed to create user in database")
