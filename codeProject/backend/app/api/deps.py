@@ -1,8 +1,8 @@
-from typing import AsyncGenerator
+from typing import Generator
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -13,9 +13,9 @@ from app.schemas.auth import TokenData
 security = HTTPBearer()
 
 
-async def get_current_user(
+def get_current_user(
         credentials: HTTPAuthorizationCredentials = Depends(security),
-        db: AsyncSession = Depends(get_db)
+        db: Session = Depends(get_db)
 ) -> User:
     """
     Получить текущего пользователя по токену
@@ -38,17 +38,15 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    from sqlalchemy.future import select
-    result = await db.execute(select(User).filter(User.id == token_data.user_id))
-    user = result.scalar_one_or_none()
+    user = db.query(User).filter(User.id == token_data.user_id).first()
     if user is None:
         raise credentials_exception
     return user
 
 
-async def get_current_user_from_telegram(
+def get_current_user_from_telegram(
         request: Request,
-        db: AsyncSession = Depends(get_db)
+        db: Session = Depends(get_db)
 ) -> User:
     """
     Get current user from Telegram Web App data, creating if doesn't exist
@@ -82,8 +80,8 @@ async def get_current_user_from_telegram(
     telegram_user_data = get_telegram_user_data(init_data)
 
     # Get or create user from Telegram data
-    from app.core.security import get_or_create_user_from_telegram
-    user = await get_or_create_user_from_telegram(telegram_user_data, db)
+    from app.core.security import get_or_create_user_from_telegram_sync
+    user = get_or_create_user_from_telegram_sync(telegram_user_data, db)
     if user is None:
         raise HTTPException(status_code=400, detail="Request must come from Telegram Web App with valid init data")
     return user

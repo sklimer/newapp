@@ -4,11 +4,10 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from app.api.version_selector import register_api_versions, APIVersion
 from app.core.config import settings
-from app.core.database import async_engine
+from app.core.database import engine
 from app.core.middleware import TelegramWebAppMiddleware
 from app.core.security import get_or_create_user_from_telegram
 from app.api.deps import get_db
@@ -19,21 +18,22 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
-# Create async session maker for lifespan
-AsyncSessionLocal = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
+# Synchronous engine does not need special session maker for lifespan
+# Using the existing SessionLocal from database module
+from app.core.database import SessionLocal
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
     # Запуск приложения
-    logger.info("Startapplication...")
+    logger.info("Starting application...")
     # We're not using the database connection in lifespan since it's handled by dependency injection
     yield
     # Завершение работы
     logger.info("Shutting down application...")
     # Close engine when shutting down
-    await async_engine.dispose()
+    engine.dispose()
 
 
 # Создание экземпляра FastAPI с lifespan
@@ -85,11 +85,11 @@ register_api_versions(app, enabled_versions=[APIVersion.V1, APIVersion.V2])
 @app.get("/health")
 async def health_check():
     """Endpoint для проверки здоровья сервиса"""
-    # In the async approach, we don't track connection status the same way
+    # Health check for synchronous engine
     return {
         "status": "healthy",
         "service": "restaurant-telegram-api",
-        "database": "async_engine_ready",  # Simplified for async approach
+        "database": "sync_engine_ready",  # Updated for sync approach
         "debug": settings.DEBUG
     }
 

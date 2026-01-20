@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 import jwt
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 from .config import settings
 from .telegram import validate_telegram_init_data, get_telegram_user_data, is_running_in_telegram_web_app
 
@@ -54,7 +54,7 @@ def require_telegram_auth():
     Dependency to ensure requests come from Telegram and validate init data
     """
 
-    async def validate_telegram_request(request: Request):
+    def validate_telegram_request(request: Request):
         # Check if request is coming from Telegram Web App
         if not is_running_in_telegram_web_app(request):
             raise HTTPException(status_code=400, detail="Request must come from Telegram Web App")
@@ -81,7 +81,7 @@ def require_telegram_web_app():
     Dependency to ensure requests only come from Telegram Web App
     """
 
-    async def check_telegram_environment(request: Request):
+    def check_telegram_environment(request: Request):
         if not is_running_in_telegram_web_app(request):
             raise HTTPException(status_code=400, detail="This endpoint is only accessible from Telegram Web App")
         return True
@@ -89,12 +89,12 @@ def require_telegram_web_app():
     return check_telegram_environment
 
 
-async def get_or_create_user_from_telegram(
+def get_or_create_user_from_telegram_sync(
         telegram_user_data: Dict[str, Any],
-        db: AsyncSession
+        db: Session
 ):
     """
-    Get or create user from Telegram data
+    Get or create user from Telegram data (synchronous version)
 
     Args:
         telegram_user_data: Dictionary with Telegram user data from validated initData
@@ -121,13 +121,9 @@ async def get_or_create_user_from_telegram(
 
         # Check if user already exists by telegram_id
         from app.models.users import User as UserModel
-        from sqlalchemy.future import select
         from datetime import datetime
 
-        result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == telegram_id)
-        )
-        db_user = result.scalar_one_or_none()
+        db_user = db.query(UserModel).filter(UserModel.telegram_id == telegram_id).first()
 
         if db_user:
             # Update user data if changed
@@ -140,15 +136,16 @@ async def get_or_create_user_from_telegram(
 
             updated = False
             for field, value in update_fields.items():
-                current_value = getattr(db_user, field)
-                if value is not None and current_value != value:
-                    setattr(db_user, field, value)
-                    updated = True
-                    logger.debug(f"Updated field {field}: {current_value} -> {value}")
+                if value is not None:
+                    current_value = getattr(db_user, field)
+                    if current_value != value:
+                        setattr(db_user, field, value)
+                        updated = True
+                        logger.debug(f"Updated field {field}: {current_value} -> {value}")
 
             if updated:
-                await db.commit()
-                await db.refresh(db_user)
+                db.commit()
+                db.refresh(db_user)
                 logger.info(f"Updated existing user: {telegram_id}")
             else:
                 logger.info(f"User exists, no changes needed: {telegram_id}")
@@ -174,17 +171,17 @@ async def get_or_create_user_from_telegram(
 
             db_user = UserModel(**user_create_data)
             db.add(db_user)
-            await db.commit()
-            await db.refresh(db_user)
+            db.commit()
+            db.refresh(db_user)
 
             logger.info(f"Created new user: {telegram_id}, referral_code: {db_user.referral_code}")
             return db_user
 
     except Exception as e:
-        logger.error(f"Unexpected error in get_or_create_user_from_telegram: {str(e)}", exc_info=True)
+        logger.error(f"Unexpected error in get_or_create_user_from_telegram_sync: {str(e)}", exc_info=True)
         # Rollback any changes if there was an error
         try:
-            await db.rollback()
+            db.rollback()
         except:
             pass
         return None
