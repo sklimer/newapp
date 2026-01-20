@@ -42,7 +42,7 @@ export default defineConfig({
   define: {
     'import.meta.env.VITE_API_URL': JSON.stringify(
       isVercel
-        ? 'https://ваш-продакшен-бэкенд.домен/api/v1'
+        ? 'https://newapp-c2js.onrender.com/api/v1'
         : process.env.VITE_API_URL || 'http://localhost:8000/api/v1'
     )
   }
