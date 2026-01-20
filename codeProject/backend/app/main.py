@@ -7,7 +7,7 @@ import uvicorn
 from sqlalchemy.orm import sessionmaker, Session
 from app.api.version_selector import register_api_versions, APIVersion
 from app.core.config import settings
-from app.core.database import engine
+from app.core.database import sync_engine
 from app.core.middleware import TelegramWebAppMiddleware
 
 from app.api.deps import get_db
@@ -20,7 +20,7 @@ logging.basicConfig(
 )
 # Synchronous engine does not need special session maker for lifespan
 # Using the existing SessionLocal from database module
-from app.core.database import SessionLocal
+from app.core.database import SyncSessionLocal
 
 
 @asynccontextmanager
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     # Завершение работы
     logger.info("Shutting down application...")
     # Close engine when shutting down
-    engine.dispose()
+    sync_engine.dispose()
 
 
 # Создание экземпляра FastAPI с lifespan

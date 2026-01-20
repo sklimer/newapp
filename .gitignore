@@ -1,50 +1,82 @@
 ```
-# Compiled and build artifacts
-DATA/
-codeProject/.idea
-codeProject/frontend/node_modules
-codeProject/README.md
-*.pyc
+# Python
 __pycache__/
-*.o
-*.obj
+*.py[cod]
+*$py.class
 *.so
-*.dll
-*.exe
-*.class
-*.out
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Dependencies
-node_modules/
+# Virtual environments
 venv/
+ENV/
+env.bak/
 .venv/
-.env
-.env.local
-.env.*
 
-# Logs and temp files
-*.log
-*.tmp
+# IDE
+.vscode/
+.idea/
 *.swp
 *.swo
 
-# Editors
-.vscode/
-.idea/
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+*.env.*
 
 # Coverage
 .coverage
 coverage/
 htmlcov/
 
-# Build directories
-dist/
-build/
-target/
-.pytest_cache/
+# MyPy
 .mypy_cache/
+.dmypy.json
+dmypy.json
 
-# System files
+# Pytest
+.pytest_cache/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# System
 .DS_Store
 Thumbs.db
 ```

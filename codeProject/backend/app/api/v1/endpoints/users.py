@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db
 from app.core.security import require_telegram_auth, require_telegram_web_app
 from app.schemas.users import User, UserCreate, UserUpdate
 from app.models.users import User as UserModel
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[User])
 async def get_users(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     skip: int = 0,
     limit: int = 100
 ):
@@ -30,7 +30,7 @@ async def get_users(
 @router.get("/{user_id}", response_model=User)
 async def get_user(
     user_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get a specific user by ID"""
     result = await db.execute(
@@ -46,7 +46,7 @@ async def get_user(
 @router.post("/", response_model=User)
 async def create_user(
     user: UserCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Create a new user"""
     # Check if user already exists by telegram_id
@@ -75,7 +75,7 @@ async def create_user(
 async def update_user(
     user_id: int,
     user_update: UserUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Update a user"""
     result = await db.execute(
@@ -105,7 +105,7 @@ async def update_user(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Delete a user (soft delete by setting is_active to False)"""
     result = await db.execute(
@@ -128,7 +128,7 @@ async def delete_user(
 @router.post("/telegram-auth")
 async def telegram_auth(
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     user_data: dict = Depends(require_telegram_auth())
 ):
     """Authenticate user via Telegram"""
@@ -175,7 +175,7 @@ async def telegram_auth(
 @router.get("/{user_id}/orders", response_model=List[OrderSchema])
 async def get_user_orders(
     user_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get all orders for a specific user"""
     from app.models.orders import Order as OrderModel

@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/", response_model=UserResponse)
 async def get_profile(
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get current user profile
@@ -24,7 +24,7 @@ async def get_profile(
 async def update_profile(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """
     Update current user profile

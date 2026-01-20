@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 import math
 
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db
 from app.core.config import settings
 from app.schemas.delivery import (
     DeliveryZone, DeliveryZoneCreate, DeliveryZoneUpdate,
@@ -40,7 +40,7 @@ def is_point_in_zone(lat: float, lon: float, zone: DeliveryZoneModel) -> bool:
 
 @router.get("/zones", response_model=List[DeliveryZone])
 async def get_delivery_zones(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     skip: int = 0,
     limit: int = 100
 ):
@@ -59,7 +59,7 @@ async def get_delivery_zones(
 @router.get("/zones/{zone_id}", response_model=DeliveryZone)
 async def get_delivery_zone(
     zone_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get a specific delivery zone by ID"""
     result = await db.execute(
@@ -75,7 +75,7 @@ async def get_delivery_zone(
 @router.post("/zones", response_model=DeliveryZone)
 async def create_delivery_zone(
     zone: DeliveryZoneCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Create a new delivery zone"""
     db_zone = DeliveryZoneModel(**zone.dict())
@@ -89,7 +89,7 @@ async def create_delivery_zone(
 async def update_delivery_zone(
     zone_id: int,
     zone_update: DeliveryZoneUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Update a delivery zone"""
     result = await db.execute(
@@ -119,7 +119,7 @@ async def update_delivery_zone(
 @router.delete("/zones/{zone_id}")
 async def delete_delivery_zone(
     zone_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Delete a delivery zone (soft delete by setting is_active to False)"""
     result = await db.execute(
@@ -141,7 +141,7 @@ async def delete_delivery_zone(
 
 @router.get("/costs", response_model=List[DeliveryCost])
 async def get_delivery_costs(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     skip: int = 0,
     limit: int = 100
 ):
@@ -159,7 +159,7 @@ async def get_delivery_costs(
 @router.get("/costs/{cost_id}", response_model=DeliveryCost)
 async def get_delivery_cost(
     cost_id: int,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Get a specific delivery cost by ID"""
     result = await db.execute(
@@ -175,7 +175,7 @@ async def get_delivery_cost(
 @router.post("/costs", response_model=DeliveryCost)
 async def create_delivery_cost(
     cost: DeliveryCostCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Create a new delivery cost"""
     db_cost = DeliveryCostModel(**cost.dict())
@@ -189,7 +189,7 @@ async def create_delivery_cost(
 async def update_delivery_cost(
     cost_id: int,
     cost_update: DeliveryCostUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Update a delivery cost"""
     result = await db.execute(
@@ -219,7 +219,7 @@ async def update_delivery_cost(
 @router.post("/calculate", response_model=DeliveryCalculationResponse)
 async def calculate_delivery(
     request: DeliveryCalculationRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_async_db)
 ):
     """Calculate delivery cost based on location and order amount"""
     # Get all active delivery zones

@@ -1,12 +1,13 @@
 import logging
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from .config import settings
 
 Base = declarative_base()
 
 # SQLAlchemy sync engine (синхронный движок)
-engine = create_engine(
+sync_engine = create_engine(
     settings.DATABASE_URL,
     pool_size=20,  # Размер пула соединений
     max_overflow=30,  # Максимальное количество соединений сверх pool_size
@@ -15,11 +16,28 @@ engine = create_engine(
     echo=False  # Логирование SQL запросов (True для отладки)
 )
 
+# SQLAlchemy async engine (асинхронный движок)
+async_engine = create_async_engine(
+    settings.ASYNC_DATABASE_URL,
+    pool_size=20,
+    max_overflow=30,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    echo=False
+)
+
 # Sync session maker (синхронная фабрика сессий)
-SessionLocal = sessionmaker(
+SyncSessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine,
+    bind=sync_engine,
+    expire_on_commit=False
+)
+
+# Async session maker (асинхронная фабрика сессий)
+AsyncSessionLocal = sessionmaker(
+    class_=AsyncSession,
+    bind=async_engine,
     expire_on_commit=False
 )
 
@@ -31,18 +49,18 @@ logging.basicConfig(
 )
 
 
-# Функция для получения сессии БД
+# Функция для получения сессии БД (синхронной)
 def get_db():
     """
-    Создает и возвращает сессию базы данных.
-    Используется как dependency в FastAPI.
+    Создает и возвращает синхронную сессию базы данных.
+    Используется как dependency в FastAPI для синхронных операций.
 
     Пример использования в FastAPI:
     @app.get("/items")
     def read_items(db: Session = Depends(get_db)):
         return db.query(Item).all()
     """
-    db = SessionLocal()
+    db = SyncSessionLocal()
     try:
         yield db
         db.commit()
@@ -54,20 +72,36 @@ def get_db():
         db.close()
 
 
+# Асинхронная функция для получения сессии БД
+async def get_async_db():
+    """
+    Создает и возвращает асинхронную сессию базы данных.
+    Используется как dependency в FastAPI для асинхронных операций.
+    """
+    async with AsyncSessionLocal() as db:
+        try:
+            yield db
+            await db.commit()
+        except Exception as e:
+            await db.rollback()
+            logger.error(f"Async database error: {e}")
+            raise
+
+
 # Функция для создания всех таблиц (для миграций/инициализации)
 def create_tables():
     """
     Создает все таблицы в базе данных.
     Вызывается при инициализации приложения.
     """
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=sync_engine)
     logger.info("Database tables created successfully")
 
 
 # Утилитарные функции
 def get_db_session():
     """Получение сессии для прямого использования (не через dependency injection)"""
-    return SessionLocal()
+    return SyncSessionLocal()
 
 
 def close_db_session(db):
