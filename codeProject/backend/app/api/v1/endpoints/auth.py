@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_async_db
 from app.core.security import get_or_create_user_from_telegram_sync
 from app.schemas.users import UserResponse
 from app.core import settings
@@ -230,7 +230,7 @@ async def verify_telegram_auth(request: Request) -> Tuple[Dict[str, Any], str]:
 @router.post("/verify-telegram")
 async def verify_telegram(
         request: Request,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Основной эндпоинт для верификации"""
     logger.info("🚀 /verify-telegram called")
@@ -261,7 +261,7 @@ async def verify_telegram(
 @router.post("/telegram-simple")
 async def telegram_simple_auth(
         request: Request,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Упрощенная аутентификация (для разработки)"""
     logger.warning("⚠️ USING SIMPLE AUTH - HASH VALIDATION DISABLED!")

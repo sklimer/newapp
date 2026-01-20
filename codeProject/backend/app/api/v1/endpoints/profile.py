@@ -11,8 +11,8 @@ router = APIRouter()
 
 @router.get("/", response_model=UserResponse)
 async def get_profile(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Get current user profile
@@ -22,21 +22,21 @@ async def get_profile(
 
 @router.put("/", response_model=UserResponse)
 async def update_profile(
-    user_update: UserUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+        user_update: UserUpdate,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Update current user profile
     """
     update_data = user_update.dict(exclude_unset=True)
-    
+
     # Update user fields
     for field, value in update_data.items():
         setattr(current_user, field, value)
-    
+
     db.add(current_user)
     await db.commit()
     await db.refresh(current_user)
-    
+
     return UserResponse.from_orm(current_user)

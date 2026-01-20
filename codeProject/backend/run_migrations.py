@@ -33,7 +33,8 @@ def run_migrations():
         logger.error("DATABASE_URL environment variable is not set")
         sys.exit(1)
 
-    logger.info(f"DATABASE_URL найден: {database_url.replace('://', '://***:***@') if '@' in database_url else database_url}")
+    logger.info(
+        f"DATABASE_URL найден: {database_url.replace('://', '://***:***@') if '@' in database_url else database_url}")
 
     # Шаг 2: Создание подключения к базе данных
     logger.info("Шаг 2: Создание подключения к базе данных")

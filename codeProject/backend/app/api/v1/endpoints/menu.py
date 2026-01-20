@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db
 from app.schemas.menu import (
-    Category, CategoryCreate, CategoryUpdate, 
+    Category, CategoryCreate, CategoryUpdate,
     Product, ProductCreate, ProductUpdate,
     ProductOption, ProductOptionCreate, ProductOptionUpdate,
     ProductVariant, ProductVariantCreate, ProductVariantUpdate
@@ -17,9 +18,9 @@ router = APIRouter()
 
 @router.get("/categories", response_model=List[Category])
 async def get_categories(
-    db: AsyncSession = Depends(get_db),
-    skip: int = 0,
-    limit: int = 100
+        db: AsyncSession = Depends(get_async_db),
+        skip: int = 0,
+        limit: int = 100
 ):
     """Get all categories"""
     result = await db.execute(
@@ -37,8 +38,8 @@ async def get_categories(
 
 @router.get("/categories/{category_id}", response_model=Category)
 async def get_category(
-    category_id: int,
-    db: AsyncSession = Depends(get_db)
+        category_id: int,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Get a specific category by ID"""
     result = await db.execute(
@@ -54,8 +55,8 @@ async def get_category(
 
 @router.post("/categories", response_model=Category)
 async def create_category(
-    category: CategoryCreate,
-    db: AsyncSession = Depends(get_db)
+        category: CategoryCreate,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Create a new category"""
     db_category = CategoryModel(**category.dict())
@@ -67,9 +68,9 @@ async def create_category(
 
 @router.put("/categories/{category_id}", response_model=Category)
 async def update_category(
-    category_id: int,
-    category_update: CategoryUpdate,
-    db: AsyncSession = Depends(get_db)
+        category_id: int,
+        category_update: CategoryUpdate,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Update a category"""
     result = await db.execute(
@@ -79,7 +80,7 @@ async def update_category(
     db_category = result.fetchone()
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
-    
+
     update_data = category_update.dict(exclude_unset=True)
     await db.execute(
         CategoryModel.__table__.update()
@@ -87,7 +88,7 @@ async def update_category(
         .values(**update_data)
     )
     await db.commit()
-    
+
     result = await db.execute(
         CategoryModel.__table__.select()
         .where(CategoryModel.id == category_id)
@@ -99,8 +100,8 @@ async def update_category(
 
 @router.delete("/categories/{category_id}")
 async def delete_category(
-    category_id: int,
-    db: AsyncSession = Depends(get_db)
+        category_id: int,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Delete a category (soft delete by setting is_active to False)"""
     result = await db.execute(
@@ -110,7 +111,7 @@ async def delete_category(
     db_category = result.fetchone()
     if not db_category:
         raise HTTPException(status_code=404, detail="Category not found")
-    
+
     await db.execute(
         CategoryModel.__table__.update()
         .where(CategoryModel.id == category_id)
@@ -122,20 +123,20 @@ async def delete_category(
 
 @router.get("/products", response_model=List[Product])
 async def get_products(
-    db: AsyncSession = Depends(get_db),
-    skip: int = 0,
-    limit: int = 100,
-    category_id: int = None,
-    is_active: bool = True
+        db: AsyncSession = Depends(get_async_db),
+        skip: int = 0,
+        limit: int = 100,
+        category_id: int = None,
+        is_active: bool = True
 ):
     """Get all products"""
     query = ProductModel.__table__.select().where(ProductModel.is_active == is_active)
-    
+
     if category_id:
         query = query.where(ProductModel.category_id == category_id)
-    
+
     query = query.order_by(ProductModel.position).offset(skip).limit(limit)
-    
+
     result = await db.execute(query)
     products = result.fetchall()
     # Convert to ORM objects first
@@ -145,8 +146,8 @@ async def get_products(
 
 @router.get("/products/{product_id}", response_model=Product)
 async def get_product(
-    product_id: int,
-    db: AsyncSession = Depends(get_db)
+        product_id: int,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Get a specific product by ID"""
     result = await db.execute(
@@ -162,8 +163,8 @@ async def get_product(
 
 @router.post("/products", response_model=Product)
 async def create_product(
-    product: ProductCreate,
-    db: AsyncSession = Depends(get_db)
+        product: ProductCreate,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Create a new product"""
     db_product = ProductModel(**product.dict())
@@ -175,9 +176,9 @@ async def create_product(
 
 @router.put("/products/{product_id}", response_model=Product)
 async def update_product(
-    product_id: int,
-    product_update: ProductUpdate,
-    db: AsyncSession = Depends(get_db)
+        product_id: int,
+        product_update: ProductUpdate,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Update a product"""
     result = await db.execute(
@@ -187,7 +188,7 @@ async def update_product(
     db_product = result.fetchone()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+
     update_data = product_update.dict(exclude_unset=True)
     await db.execute(
         ProductModel.__table__.update()
@@ -195,7 +196,7 @@ async def update_product(
         .values(**update_data)
     )
     await db.commit()
-    
+
     result = await db.execute(
         ProductModel.__table__.select()
         .where(ProductModel.id == product_id)
@@ -207,8 +208,8 @@ async def update_product(
 
 @router.delete("/products/{product_id}")
 async def delete_product(
-    product_id: int,
-    db: AsyncSession = Depends(get_db)
+        product_id: int,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Delete a product (soft delete by setting is_active to False)"""
     result = await db.execute(
@@ -218,7 +219,7 @@ async def delete_product(
     db_product = result.fetchone()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+
     await db.execute(
         ProductModel.__table__.update()
         .where(ProductModel.id == product_id)
@@ -230,8 +231,8 @@ async def delete_product(
 
 @router.get("/products/{product_id}/options", response_model=List[ProductOption])
 async def get_product_options(
-    product_id: int,
-    db: AsyncSession = Depends(get_db)
+        product_id: int,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Get all options for a product"""
     result = await db.execute(
@@ -248,9 +249,9 @@ async def get_product_options(
 
 @router.post("/products/{product_id}/options", response_model=ProductOption)
 async def create_product_option(
-    product_id: int,
-    option: ProductOptionCreate,
-    db: AsyncSession = Depends(get_db)
+        product_id: int,
+        option: ProductOptionCreate,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Create a new product option"""
     option_data = option.dict()
@@ -264,8 +265,8 @@ async def create_product_option(
 
 @router.get("/products/{product_id}/variants", response_model=List[ProductVariant])
 async def get_product_variants(
-    product_id: int,
-    db: AsyncSession = Depends(get_db)
+        product_id: int,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Get all variants for a product"""
     result = await db.execute(
@@ -282,9 +283,9 @@ async def get_product_variants(
 
 @router.post("/products/{product_id}/variants", response_model=ProductVariant)
 async def create_product_variant(
-    product_id: int,
-    variant: ProductVariantCreate,
-    db: AsyncSession = Depends(get_db)
+        product_id: int,
+        variant: ProductVariantCreate,
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Create a new product variant"""
     variant_data = variant.dict()

@@ -7,7 +7,7 @@ from yookassa import Configuration, Payment as YooPayment
 import uuid
 from datetime import datetime
 
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db
 from app.core.config import settings
 from app.core.security import require_telegram_auth, require_telegram_web_app
 from app.schemas.payments import Payment, PaymentCreate, PaymentUpdate, CreatePaymentRequest, PaymentResponse
@@ -24,7 +24,7 @@ Configuration.configure(settings.YOOKASSA_SHOP_ID, settings.YOOKASSA_API_KEY)
 @router.get("/", response_model=List[Payment])
 async def get_payments(
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         skip: int = 0,
         limit: int = 100,
         user_id: int = None,
@@ -50,7 +50,7 @@ async def get_payments(
 async def get_payment(
         payment_id: int,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         is_telegram=Depends(require_telegram_web_app())
 ):
     """Get a specific payment by ID"""
@@ -68,7 +68,7 @@ async def get_payment(
 async def create_payment(
         payment: PaymentCreate,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         user_data: dict = Depends(require_telegram_auth())
 ):
     """Create a new payment"""
@@ -111,7 +111,7 @@ async def update_payment(
         payment_id: int,
         payment_update: PaymentUpdate,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         is_telegram=Depends(require_telegram_web_app())
 ):
     """Update a payment"""
@@ -143,7 +143,7 @@ async def update_payment(
 async def create_yookassa_payment(
         request_data: CreatePaymentRequest,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         is_telegram=Depends(require_telegram_web_app())
 ):
     """Create a YooKassa payment"""
@@ -208,7 +208,7 @@ async def create_yookassa_payment(
 @router.post("/yookassa-webhook")
 async def yookassa_webhook(
         request: Request,
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """Handle YooKassa webhook"""
     try:
@@ -273,7 +273,7 @@ async def process_bonus_payment(
         user_id: int,
         amount: float,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         user_data: dict = Depends(require_telegram_auth())
 ):
     """Process a bonus payment"""

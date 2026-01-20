@@ -1,12 +1,13 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 from typing import List, Optional
 from pydantic import BaseModel
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_async_db
 from app.models.users import User
 from app.models.cart import CartItem
 from app.models.menu import Product
@@ -60,7 +61,7 @@ async def get_user_from_db(telegram_id: int, db: AsyncSession) -> User:
 async def add_to_cart(
         cart_item: CartItemCreate,
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Добавляет товар в корзину по telegram_id
@@ -118,7 +119,7 @@ async def add_to_cart(
 @router.get("/", response_model=List[CartItemResponse])
 async def get_cart(
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Получает корзину пользователя по telegram_id
@@ -177,7 +178,7 @@ async def update_cart_item(
         cart_item_update: CartItemUpdate,
         product_id: int = Query(..., description="ID товара"),
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Обновляет количество товара в корзине
@@ -238,7 +239,7 @@ async def update_cart_item(
 async def remove_from_cart(
         product_id: int = Query(..., description="ID товара"),
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Удаляет товар из корзины
@@ -279,7 +280,7 @@ async def remove_from_cart(
 @router.delete("/clear")
 async def clear_cart(
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Очищает всю корзину пользователя
@@ -320,7 +321,7 @@ async def clear_cart(
 async def add_to_cart_v2(
         cart_item: CartItemCreate,
         telegram_auth: TelegramAuth = Body(...),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Альтернативная версия добавления в корзину с передачей telegram_id в теле запроса
@@ -334,7 +335,7 @@ async def add_to_cart_v2(
 @router.get("/v2", response_model=List[CartItemResponse])
 async def get_cart_v2(
         telegram_auth: TelegramAuth = Body(...),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Альтернативная версия получения корзины с передачей telegram_id в теле запроса
@@ -349,7 +350,7 @@ async def get_cart_v2(
 @router.get("/count")
 async def get_cart_count(
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Получает количество уникальных товаров в корзине
@@ -400,7 +401,7 @@ async def get_cart_count(
 async def batch_update_cart(
         updates: List[CartItemBatchUpdate],
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_async_db)
 ):
     """
     Массовое обновление корзины

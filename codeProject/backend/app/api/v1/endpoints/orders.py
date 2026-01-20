@@ -5,7 +5,7 @@ from typing import List
 import uuid
 from datetime import datetime
 
-from app.core.database import get_db
+from app.core.database import get_db, get_async_db
 from app.core.security import require_telegram_auth, require_telegram_web_app
 from app.schemas.orders import Order, OrderCreate, OrderUpdate, OrderItem
 from app.models.orders import Order as OrderModel, OrderItem as OrderItemModel
@@ -18,7 +18,7 @@ router = APIRouter()
 @router.get("/", response_model=List[Order])
 async def get_orders(
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         skip: int = 0,
         limit: int = 100,
         user_id: int = None,
@@ -44,7 +44,7 @@ async def get_orders(
 async def get_order(
         order_id: int,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         is_telegram=Depends(require_telegram_web_app())
 ):
     """Get a specific order by ID"""
@@ -62,7 +62,7 @@ async def get_order(
 async def create_order(
         order: OrderCreate,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         user_data: dict = Depends(require_telegram_auth())
 ):
     """Create a new order"""
@@ -156,7 +156,7 @@ async def update_order(
         order_id: int,
         order_update: OrderUpdate,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         is_telegram=Depends(require_telegram_web_app())
 ):
     """Update an order"""
@@ -188,7 +188,7 @@ async def update_order(
 async def delete_order(
         order_id: int,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         is_telegram=Depends(require_telegram_web_app())
 ):
     """Delete an order (soft delete by setting is_active to False)"""
@@ -213,7 +213,7 @@ async def delete_order(
 async def get_order_items(
         order_id: int,
         request: Request,
-        db: AsyncSession = Depends(get_db),
+        db: AsyncSession = Depends(get_async_db),
         is_telegram=Depends(require_telegram_web_app())
 ):
     """Get all items for an order"""
