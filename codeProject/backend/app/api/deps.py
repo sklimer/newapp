@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import get_or_create_user_from_telegram
+from app.core.security import get_or_create_user_from_telegram_sync
 from app.models.users import User
 from app.schemas.auth import TokenData
 
