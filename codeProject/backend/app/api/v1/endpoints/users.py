@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from typing import List, Optional
 from datetime import datetime
 
 from app.core.database import get_async_db
-from app.core.security import get_current_user, require_telegram_auth, require_telegram_web_app
+from app.core.security import get_current_user, require_telegram_auth
 from app.schemas.users import User, UserCreate, UserUpdate
 from app.models.users import User as UserModel
 from app.schemas.orders import OrderSchema
