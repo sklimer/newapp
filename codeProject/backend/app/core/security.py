@@ -194,165 +194,144 @@ def create_access_token(
         raise
 
 
-async def require_telegram_auth():
+# ИСПРАВЛЕННАЯ ВЕРСИЯ: Простая зависимость, а не фабрика
+async def require_telegram_auth(request: Request) -> Dict[str, Any]:
     """
     Dependency для проверки, что запрос пришел из Telegram и валидации init data
 
+    Args:
+        request: FastAPI Request объект
+
     Returns:
-        Callable: Функция-зависимость
+        Dict[str, Any]: Данные пользователя из Telegram
+
+    Raises:
+        HTTPException: Если валидация не удалась
     """
-    logger.info("🛂 Создание зависимости для Telegram аутентификации")
+    logger.info("🔍 Начинаем валидацию Telegram запроса")
+    logger.debug(f"📡 Метод запроса: {request.method}")
+    logger.debug(f"📡 URL запроса: {request.url}")
+    logger.debug(f"📡 Заголовки: {dict(request.headers)}")
 
-    async def validate_telegram_request(request: Request) -> Dict[str, Any]:
-        """
-        Валидирует Telegram запрос и возвращает данные пользователя
-
-        Args:
-            request: FastAPI Request объект
-
-        Returns:
-            Dict[str, Any]: Данные пользователя из Telegram
-
-        Raises:
-            HTTPException: Если валидация не удалась
-        """
-        logger.info("🔍 Начинаем валидацию Telegram запроса")
-        logger.debug(f"📡 Метод запроса: {request.method}")
-        logger.debug(f"📡 URL запроса: {request.url}")
-        logger.debug(f"📡 Заголовки: {dict(request.headers)}")
-
-        try:
-            # Проверяем, что запрос из Telegram Web App
-            is_telegram = is_running_in_telegram_web_app(request)
-            if not is_telegram:
-                logger.warning("⚠️ Запрос не из Telegram Web App")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Данный запрос должен выполняться из Telegram Web App"
-                )
-
-            logger.info("✅ Запрос подтвержден как Telegram Web App")
-
-            # Получаем init data из разных источников
-            init_data = None
-            sources = [
-                ("header-x-telegram-web-app-init-data", request.headers.get("x-telegram-web-app-init-data")),
-                ("header-X-Telegram-WebApp-InitData", request.headers.get("X-Telegram-WebApp-InitData")),
-                ("query-param-initData", request.query_params.get("initData")),
-                ("form-data-initData", None),  # Буде проверено позже при необходимости
-            ]
-
-            for source_name, data in sources:
-                if data:
-                    init_data = data
-                    logger.info(f"📥 Найден initData в {source_name}")
-                    break
-
-            if not init_data:
-                # Пробуем получить из тела запроса
-                try:
-                    body = await request.json()
-                    init_data = body.get("initData") or body.get("init_data")
-                    if init_data:
-                        logger.info("📥 Найден initData в теле запроса (JSON)")
-                except:
-                    pass
-
-            if not init_data:
-                logger.error("❌ initData не найден в запросе")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Отсутствуют данные инициализации Telegram (initData). "
-                           "Пожалуйста, отправьте initData в заголовке 'x-telegram-web-app-init-data' "
-                           "или в параметре 'initData'"
-                )
-
-            logger.info(f"📥 Получен initData. Длина: {len(init_data)} символов")
-            logger.debug(f"📥 initData (первые 200 символов): {init_data[:200]}...")
-
-            # Валидируем init data
-            try:
-                validate_telegram_init_data(init_data)
-                logger.info("✅ initData успешно верифицирован")
-            except Exception as e:
-                logger.error(f"❌ Ошибка валидации initData: {str(e)}")
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"Невалидные данные Telegram: {str(e)}"
-                )
-
-            # Получаем данные пользователя
-            user_data = get_telegram_user_data(init_data)
-            if not user_data:
-                logger.error("❌ Не удалось извлечь данные пользователя из initData")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Не удалось извлечь данные пользователя"
-                )
-
-            logger.info(f"✅ Данные пользователя получены. ID: {user_data.get('id')}")
-            logger.debug(f"👤 Данные пользователя: {user_data}")
-
-            return user_data
-
-        except HTTPException:
-            # Пробрасываем HTTP исключения дальше
-            raise
-        except Exception as e:
-            logger.error(f"❌ Неожиданная ошибка при валидации Telegram: {str(e)}", exc_info=True)
+    try:
+        # Проверяем, что запрос из Telegram Web App
+        is_telegram = is_running_in_telegram_web_app(request)
+        if not is_telegram:
+            logger.warning("⚠️ Запрос не из Telegram Web App")
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Внутренняя ошибка при обработке Telegram аутентификации"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Данный запрос должен выполняться из Telegram Web App"
             )
 
-    return validate_telegram_request
+        logger.info("✅ Запрос подтвержден как Telegram Web App")
+
+        # Получаем init data из разных источников
+        init_data = None
+        sources = [
+            ("header-x-telegram-web-app-init-data", request.headers.get("x-telegram-web-app-init-data")),
+            ("header-X-Telegram-WebApp-InitData", request.headers.get("X-Telegram-WebApp-InitData")),
+            ("query-param-initData", request.query_params.get("initData")),
+        ]
+
+        for source_name, data in sources:
+            if data:
+                init_data = data
+                logger.info(f"📥 Найден initData в {source_name}")
+                break
+
+        if not init_data:
+            # Пробуем получить из тела запроса
+            try:
+                body = await request.json()
+                init_data = body.get("initData") or body.get("init_data")
+                if init_data:
+                    logger.info("📥 Найден initData в теле запроса (JSON)")
+            except:
+                pass
+
+        if not init_data:
+            logger.error("❌ initData не найден в запросе")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Отсутствуют данные инициализации Telegram (initData). "
+                       "Пожалуйста, отправьте initData в заголовке 'x-telegram-web-app-init-data' "
+                       "или в параметре 'initData'"
+            )
+
+        logger.info(f"📥 Получен initData. Длина: {len(init_data)} символов")
+        logger.debug(f"📥 initData (первые 200 символов): {init_data[:200]}...")
+
+        # Валидируем init data
+        try:
+            validate_telegram_init_data(init_data)
+            logger.info("✅ initData успешно верифицирован")
+        except Exception as e:
+            logger.error(f"❌ Ошибка валидации initData: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Невалидные данные Telegram: {str(e)}"
+            )
+
+        # Получаем данные пользователя
+        user_data = get_telegram_user_data(init_data)
+        if not user_data:
+            logger.error("❌ Не удалось извлечь данные пользователя из initData")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Не удалось извлечь данные пользователя"
+            )
+
+        logger.info(f"✅ Данные пользователя получены. ID: {user_data.get('id')}")
+        logger.debug(f"👤 Данные пользователя: {user_data}")
+
+        return user_data
+
+    except HTTPException:
+        # Пробрасываем HTTP исключения дальше
+        raise
+    except Exception as e:
+        logger.error(f"❌ Неожиданная ошибка при валидации Telegram: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Внутренняя ошибка при обработке Telegram аутентификации"
+        )
 
 
-async def require_telegram_web_app():
+# ИСПРАВЛЕННАЯ ВЕРСИЯ: Простая зависимость, а не фабрика
+async def require_telegram_web_app(request: Request) -> bool:
     """
     Dependency для проверки, что запрос пришел из Telegram Web App
 
+    Args:
+        request: FastAPI Request объект
+
     Returns:
-        Callable: Функция-зависимость
+        bool: True если запрос из Telegram Web App
+
+    Raises:
+        HTTPException: Если запрос не из Telegram Web App
     """
-    logger.info("🌐 Создание зависимости для проверки Telegram Web App")
+    logger.info("🔍 Проверка окружения Telegram Web App")
 
-    async def check_telegram_environment(request: Request) -> bool:
-        """
-        Проверяет, что запрос пришел из Telegram Web App
+    try:
+        is_telegram = is_running_in_telegram_web_app(request)
 
-        Args:
-            request: FastAPI Request объект
-
-        Returns:
-            bool: True если запрос из Telegram Web App
-
-        Raises:
-            HTTPException: Если запрос не из Telegram Web App
-        """
-        logger.info("🔍 Проверка окружения Telegram Web App")
-
-        try:
-            is_telegram = is_running_in_telegram_web_app(request)
-
-            if not is_telegram:
-                logger.warning("⚠️ Запрос не из Telegram Web App")
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Этот эндпоинт доступен только из Telegram Web App"
-                )
-
-            logger.info("✅ Запрос подтвержден как Telegram Web App")
-            return True
-
-        except Exception as e:
-            logger.error(f"❌ Ошибка при проверке окружения Telegram: {str(e)}", exc_info=True)
+        if not is_telegram:
+            logger.warning("⚠️ Запрос не из Telegram Web App")
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Ошибка при проверке окружения"
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Этот эндпоинт доступен только из Telegram Web App"
             )
 
-    return check_telegram_environment
+        logger.info("✅ Запрос подтвержден как Telegram Web App")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка при проверке окружения Telegram: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при проверке окружения"
+        )
 
 
 def get_or_create_user_from_telegram_sync(
@@ -640,8 +619,7 @@ async def get_telegram_user_or_create(
 
     try:
         # Получаем данные пользователя из Telegram
-        telegram_auth = await require_telegram_auth()
-        telegram_user_data = await telegram_auth(request)
+        telegram_user_data = await require_telegram_auth(request)
 
         # Получаем или создаем пользователя в БД
         user = get_or_create_user_from_telegram_sync(telegram_user_data, db)
@@ -671,6 +649,12 @@ async def get_telegram_user_or_create(
 
 
 # Экспортируем зависимости для использования в эндпоинтах
-get_current_user_dep = Depends(get_current_user)
-require_telegram_auth_dep = Depends(require_telegram_auth)
-require_telegram_web_app_dep = Depends(require_telegram_web_app)
+# ВАЖНО: Убрали Depends() здесь, так как зависимости должны добавляться в эндпоинтах
+# get_current_user_dep = Depends(get_current_user)
+# require_telegram_auth_dep = Depends(require_telegram_auth)
+# require_telegram_web_app_dep = Depends(require_telegram_web_app)
+
+# Вместо этого экспортируем функции, которые можно использовать с Depends()
+get_current_user_dep = get_current_user
+require_telegram_auth_dep = require_telegram_auth
+require_telegram_web_app_dep = require_telegram_web_app
