@@ -48,30 +48,30 @@ app = FastAPI(
 )
 
 # Middleware
-# 1. Telegram Web App middleware (первый, чтобы обрабатывать входящие запросы)
-app.add_middleware(TelegramWebAppMiddleware)
-
-# 2. CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 1. CORS middleware (должен быть первым, чтобы правильно обработать заголовки)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://newapp-c2js.onrender.com",  # Домен вашего frontend на Vercel
-        "https://*.onrender.com",  # Для Preview-деплоев
-        "https://newapp-six-green.vercel.app",  # Для Preview-деплоев
-        "https://*.vercel.app",  # Для Preview-деплоев
-        "http://localhost:5173"
+        "https://newapp-c2js.onrender.com",  # Домен вашего backend на Render
+        "https://*.onrender.com",  # Для Preview-деплоев на Render
+        "https://newapp-six-green.vercel.app",  # Домен вашего frontend на Vercel
+        "https://*.vercel.app",  # Для Preview-деплоев на Vercel
+        "http://localhost:5173",  # Локальный фронтенд
+        "https://web.telegram.org",  # Telegram Web Apps
+        "https://*.web.telegram.org",
+        "https://t.me",
+        "https://*.t.me",
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Разрешить отправку кастомных заголовков
+    expose_headers=["Access-Control-Allow-Origin"]
 )
+
+# 2. Telegram Web App middleware (после CORS, чтобы обрабатывать входящие запросы)
+app.add_middleware(TelegramWebAppMiddleware)
 # Подключение маршрутов
 register_api_versions(app, enabled_versions=[APIVersion.V1, APIVersion.V2])
 
