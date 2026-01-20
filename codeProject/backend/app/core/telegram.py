@@ -261,9 +261,9 @@ def is_running_in_telegram_web_app(request: Request) -> bool:
         return True
 
 
-def get_telegram_init_data_from_request(request: Request) -> Optional[str]:
+async def get_telegram_init_data_from_request(request: Request) -> Optional[str]:
     """
-    Извлекает init data из запроса из разных источников
+    Извлекает init data из запроса из разных источников (асинхронная версия)
     """
     logger.info("🔍 Ищем Telegram init data в запросе")
 
@@ -317,7 +317,7 @@ def get_telegram_init_data_from_request(request: Request) -> Optional[str]:
 
 async def validate_telegram_request(request: Request) -> Dict[str, Any]:
     """
-    Полная валидация Telegram запроса
+    Полная валидация Telegram запроса (асинхронная версия)
     """
     logger.info("🛂 Начинаем полную валидацию Telegram запроса")
 
