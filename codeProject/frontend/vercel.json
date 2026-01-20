@@ -1,19 +1,9 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "codeProject/frontend/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "codeProject/frontend/dist"
-      }
-    }
-  ],
-
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "codeProject/frontend/dist/$1"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
