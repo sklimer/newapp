@@ -362,7 +362,8 @@ async def get_or_create_user_from_telegram(
         logger.debug(f"❌ Полученные данные: {telegram_user_data}")
         return None
 
-    telegram_id = str(telegram_user_data['id'])
+    telegram_id_raw = telegram_user_data['id']
+    telegram_id = int(telegram_id_raw) if isinstance(telegram_id_raw, (int, str)) else int(str(telegram_id_raw))
     logger.info(f"👤 Обработка пользователя Telegram с ID: {telegram_id}")
 
     try:
@@ -384,7 +385,7 @@ async def get_or_create_user_from_telegram(
 
         # Проверяем существование пользователя
         result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == telegram_id)
+            select(UserModel).where(UserModel.telegram_id == int(telegram_id))
         )
         db_user = result.scalar_one_or_none()
 
@@ -431,7 +432,8 @@ def get_or_create_user_from_telegram_sync(
         logger.debug(f"❌ Полученные данные: {telegram_user_data}")
         return None
 
-    telegram_id = str(telegram_user_data['id'])
+    telegram_id_raw = telegram_user_data['id']
+    telegram_id = int(telegram_id_raw) if isinstance(telegram_id_raw, (int, str)) else int(str(telegram_id_raw))
     logger.info(f"👤 Обработка пользователя Telegram с ID: {telegram_id}")
 
     try:
@@ -453,7 +455,7 @@ def get_or_create_user_from_telegram_sync(
 
         # Проверяем существование пользователя
         db_user = db.query(UserModel).filter(
-            UserModel.telegram_id == telegram_id
+            UserModel.telegram_id == int(telegram_id)
         ).first()
 
         if db_user:

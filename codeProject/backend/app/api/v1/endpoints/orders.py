@@ -33,7 +33,7 @@ async def get_orders(
     try:
         # Находим пользователя в базе по telegram_id
         user_result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == current_user_id)
+            select(UserModel).where(UserModel.telegram_id == int(current_user_id))
         )
         user = user_result.scalar_one_or_none()
 
@@ -102,7 +102,7 @@ async def get_order(
     try:
         # Находим пользователя
         user_result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == current_user_id)
+            select(UserModel).where(UserModel.telegram_id == int(current_user_id))
         )
         user = user_result.scalar_one_or_none()
 
@@ -169,7 +169,7 @@ async def create_order(
     try:
         # Находим пользователя
         user_result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == current_user_id)
+            select(UserModel).where(UserModel.telegram_id == int(current_user_id))
         )
         user = user_result.scalar_one_or_none()
 
@@ -356,7 +356,7 @@ async def update_order(
     try:
         # Находим пользователя
         user_result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == current_user_id)
+            select(UserModel).where(UserModel.telegram_id == int(current_user_id))
         )
         user = user_result.scalar_one_or_none()
 
@@ -440,7 +440,7 @@ async def cancel_order(
     try:
         # Находим пользователя
         user_result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == current_user_id)
+            select(UserModel).where(UserModel.telegram_id == int(current_user_id))
         )
         user = user_result.scalar_one_or_none()
 
@@ -538,7 +538,7 @@ async def get_order_items(
     try:
         # Находим пользователя
         user_result = await db.execute(
-            select(UserModel).where(UserModel.telegram_id == current_user_id)
+            select(UserModel).where(UserModel.telegram_id == int(current_user_id))
         )
         user = user_result.scalar_one_or_none()
 
