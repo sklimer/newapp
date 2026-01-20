@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
-from app.core.security import get_or_create_user_from_telegram
+from app.core.security import get_or_create_user_from_telegram_sync
 from app.schemas.users import UserResponse
 from app.core import settings
 
