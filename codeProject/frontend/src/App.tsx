@@ -41,10 +41,11 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
 // Component to handle cart initialization
 const AppContent = () => {
   return (
-      <TelgramAuth>
+
 
     <GlobalCartSync>
       <BrowserRouter>
+      <TelgramAuth>
         <div className="App">
           <Header />
           <main>
@@ -53,9 +54,10 @@ const AppContent = () => {
             </div>
           </main>
         </div>
+        </TelgramAuth>
       </BrowserRouter>
     </GlobalCartSync>
-    </TelgramAuth>
+
   );
 };
 
