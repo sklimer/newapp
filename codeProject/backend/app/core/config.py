@@ -1,23 +1,62 @@
-import logging
 import os
+import logging
 from typing import List, Optional
-from pydantic import Field, validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, validator, field_validator
 from dotenv import load_dotenv
 
-# Загружаем .env файл
-load_dotenv()
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
     # Database settings
     DATABASE_URL: str = Field(
-        default=os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql://postgres:admin@localhost/res_db")),
+        default=os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql://postgresql://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
         description="PostgreSQL connection URL"
     )
     ASYNC_DATABASE_URL: str = Field(
-        default=os.getenv("ASYNC_DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql+asyncpg://postgres:admin@localhost/res_db")),
+        default=os.getenv("ASYNC_DATABASE_URL",
+                          os.getenv("POSTGRES_URL", "postgresql+asyncpg://postgresql://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
         description="PostgreSQL async connection URL"
+    )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Логируем значения (скрыв пароль)
+        self.log_database_urls()
+
+    def log_database_urls(self):
+        """Логирует URL базы данных (скрывая пароли)"""
+
+        def hide_password(url: str) -> str:
+            if "://" in url:
+                parts = url.split("://")
+                if "@" in parts[1]:
+                    auth_host = parts[1].split("@")
+                    if ":" in auth_host[0]:
+                        user_pass = auth_host[0].split(":")
+                        user_pass[1] = "***"
+                        auth_host[0] = ":".join(user_pass)
+                    parts[1] = "@".join(auth_host)
+                return "://".join(parts)
+            return url
+
+        logger.info(f"DATABASE_URL: {hide_password(self.DATABASE_URL)}")
+        logger.info(f"ASYNC_DATABASE_URL: {hide_password(self.ASYNC_DATABASE_URL)}")
+        logger.info(f"Environment DATABASE_URL: {os.getenv('DATABASE_URL', 'NOT SET')}")
+        logger.info(f"Environment ASYNC_DATABASE_URL: {os.getenv('ASYNC_DATABASE_URL', 'NOT SET')}")
+
+        # Проверяем, не указывают ли они на localhost
+        if "localhost" in self.DATABASE_URL or "127.0.0.1" in self.DATABASE_URL:
+            logger.warning("⚠️ DATABASE_URL указывает на localhost - проверьте переменные окружения на Render!")
+
+        if "localhost" in self.ASYNC_DATABASE_URL or "127.0.0.1" in self.ASYNC_DATABASE_URL:
+            logger.warning("⚠️ ASYNC_DATABASE_URL указывает на localhost - проверьте переменные окружения на Render!")
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False
     )
 
     # Telegram settings
