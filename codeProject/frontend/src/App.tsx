@@ -5,6 +5,7 @@ import { store } from './store/store';
 import Header from './components/Header';
 import RouterComponent from './router/Router';
 import GlobalCartSync from './components/GlobalCartSync';
+import TelgramAuth from './components/TelgramAuth';
 
 // Error boundary component
 class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
@@ -40,6 +41,7 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
 // Component to handle cart initialization
 const AppContent = () => {
   return (
+      <TelgramAuth>
     <GlobalCartSync>
       <BrowserRouter>
         <div className="App">
@@ -52,6 +54,7 @@ const AppContent = () => {
         </div>
       </BrowserRouter>
     </GlobalCartSync>
+    </TelgramAuth>
   );
 };
 
