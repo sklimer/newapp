@@ -8,5 +8,5 @@ const CartPage: React.FC = () => {
       <Cart />
     </div>
   );
-
+};
 export default CartPage;
