@@ -5,7 +5,7 @@ from typing import Optional
 from app.api.deps import get_db, get_current_user
 from app.models.users import User
 from app.schemas.users import UserResponse, UserUpdate
-
+from app.api.deps import get_async_db
 router = APIRouter()
 
 
