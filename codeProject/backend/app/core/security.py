@@ -5,7 +5,9 @@ import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import select
 from functools import wraps
 
 from .config import settings
@@ -334,6 +336,75 @@ async def require_telegram_web_app(request: Request) -> bool:
         )
 
 
+async def get_or_create_user_from_telegram(
+        telegram_user_data: Dict[str, Any],
+        db: AsyncSession
+) -> Optional[Any]:
+    """
+    Получает или создает пользователя на основе данных из Telegram (асинхронная версия)
+
+    Args:
+        telegram_user_data: Данные пользователя из валидированного initData Telegram
+        db: Сессия базы данных
+
+    Returns:
+        Optional[Any]: Объект пользователя или None в случае ошибки
+    """
+    logger.info("👤 Начинаем обработку пользователя из Telegram (асинхронная версия)")
+
+    # Проверяем входные данные
+    if not telegram_user_data:
+        logger.error("❌ Получены пустые данные пользователя Telegram")
+        return None
+
+    if 'id' not in telegram_user_data:
+        logger.error("❌ В данных пользователя Telegram отсутствует поле 'id'")
+        logger.debug(f"❌ Полученные данные: {telegram_user_data}")
+        return None
+
+    telegram_id = str(telegram_user_data['id'])
+    logger.info(f"👤 Обработка пользователя Telegram с ID: {telegram_id}")
+
+    try:
+        # Импортируем модель здесь, чтобы избежать циклических импортов
+        from app.models.users import User as UserModel
+
+        # Извлекаем данные пользователя
+        user_info = {
+            'telegram_id': telegram_id,
+            'first_name': telegram_user_data.get('first_name', ''),
+            'last_name': telegram_user_data.get('last_name'),
+            'username': telegram_user_data.get('username'),
+            'photo_url': telegram_user_data.get('photo_url'),
+            'language_code': telegram_user_data.get('language_code'),
+            'is_premium': telegram_user_data.get('is_premium', False),
+        }
+
+        logger.debug(f"📋 Извлеченная информация о пользователе: {user_info}")
+
+        # Проверяем существование пользователя
+        result = await db.execute(
+            select(UserModel).where(UserModel.telegram_id == telegram_id)
+        )
+        db_user = result.scalar_one_or_none()
+
+        if db_user:
+            logger.info(f"👤 Пользователь с telegram_id={telegram_id} уже существует")
+            return await _update_existing_user_async(db_user, user_info, db)
+        else:
+            logger.info(f"👤 Создание нового пользователя с telegram_id={telegram_id}")
+            return await _create_new_user_async(user_info, db)
+
+    except SQLAlchemyError as e:
+        logger.error(f"❌ Ошибка базы данных при работе с пользователем: {str(e)}", exc_info=True)
+        await db.rollback()
+        return None
+    except Exception as e:
+        logger.error(f"❌ Неожиданная ошибка при работе с пользователем: {str(e)}", exc_info=True)
+        await db.rollback()
+        return None
+
+
 def get_or_create_user_from_telegram_sync(
         telegram_user_data: Dict[str, Any],
         db: Session
@@ -399,6 +470,132 @@ def get_or_create_user_from_telegram_sync(
     except Exception as e:
         logger.error(f"❌ Неожиданная ошибка при работе с пользователем: {str(e)}", exc_info=True)
         db.rollback()
+        return None
+
+
+async def _update_existing_user_async(
+        user: Any,
+        user_info: Dict[str, Any],
+        db: AsyncSession
+) -> Any:
+    """
+    Обновляет существующего пользователя (асинхронная версия)
+
+    Args:
+        user: Объект пользователя
+        user_info: Новые данные пользователя
+        db: Сессия базы данных
+
+    Returns:
+        Any: Обновленный объект пользователя
+    """
+    logger.info(f"🔄 Обновление существующего пользователя ID={user.id}")
+
+    updated_fields = []
+    current_time = datetime.now(timezone.utc)
+
+    # Поля для обновления
+    fields_to_update = {
+        'first_name': 'first_name',
+        'last_name': 'last_name',
+        'username': 'username',
+        'photo_url': 'photo_url',
+        'language_code': 'language_code',
+        'is_premium': 'is_premium',
+    }
+
+    # Проверяем и обновляем поля
+    for model_field, info_field in fields_to_update.items():
+        new_value = user_info.get(info_field)
+        current_value = getattr(user, model_field, None)
+
+        # Проверяем, нужно ли обновлять поле
+        if new_value is not None and new_value != current_value:
+            setattr(user, model_field, new_value)
+            updated_fields.append(model_field)
+            logger.debug(f"   ↪️ Обновлено поле {model_field}: {current_value} → {new_value}")
+
+    # Обновляем метаданные
+    if updated_fields:
+        user.updated_at = current_time
+        user.last_login = current_time
+
+        try:
+            await db.commit()
+            await db.refresh(user)
+            logger.info(f"✅ Пользователь ID={user.id} успешно обновлен. Измененные поля: {updated_fields}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при сохранении обновлений пользователя: {str(e)}")
+            await db.rollback()
+            raise
+    else:
+        # Обновляем только last_login
+        user.last_login = current_time
+        await db.commit()
+        logger.info(f"✅ Пользователь ID={user.id} без изменений, обновлено только last_login")
+
+    return user
+
+
+async def _create_new_user_async(
+        user_info: Dict[str, Any],
+        db: AsyncSession
+) -> Optional[Any]:
+    """
+    Создает нового пользователя (асинхронная версия)
+
+    Args:
+        user_info: Данные пользователя
+        db: Сессия базы данных
+
+    Returns:
+        Optional[Any]: Созданный объект пользователя или None
+    """
+    logger.info("🆕 Создание нового пользователя")
+
+    try:
+        from app.models.users import User as UserModel
+
+        current_time = datetime.now(timezone.utc)
+
+        # Генерируем реферальный код
+        telegram_id = user_info['telegram_id']
+        referral_code = f"REF{telegram_id[-6:].upper()}" if len(telegram_id) >= 6 else f"REF{telegram_id}"
+
+        # Подготавливаем данные для создания
+        create_data = {
+            'telegram_id': user_info['telegram_id'],
+            'first_name': user_info['first_name'],
+            'last_name': user_info.get('last_name'),
+            'username': user_info.get('username'),
+            'photo_url': user_info.get('photo_url'),
+            'language_code': user_info.get('language_code'),
+            'is_premium': user_info.get('is_premium', False),
+            'referral_code': referral_code,
+            'last_login': current_time,
+            'created_at': current_time,
+            'updated_at': current_time,
+        }
+
+        # Удаляем None значения
+        create_data = {k: v for k, v in create_data.items() if v is not None}
+
+        logger.debug(f"📋 Данные для создания пользователя: {create_data}")
+
+        # Создаем пользователя
+        new_user = UserModel(**create_data)
+        db.add(new_user)
+        await db.commit()
+        await db.refresh(new_user)
+
+        logger.info(f"✅ Новый пользователь создан успешно. ID: {new_user.id}, Telegram ID: {telegram_id}")
+        logger.info(f"✅ Реферальный код: {new_user.referral_code}")
+
+        return new_user
+
+    except Exception as e:
+        logger.error(f"❌ Ошибка при создании пользователя: {str(e)}", exc_info=True)
+        await db.rollback()
         return None
 
 
@@ -600,7 +797,7 @@ def create_telegram_token(telegram_user_data: Dict[str, Any]) -> str:
 
 async def get_telegram_user_or_create(
         request: Request,
-        db: Session
+        db: AsyncSession
 ) -> Tuple[Any, str]:
     """
     Получает пользователя Telegram или создает нового, возвращая также JWT токен
@@ -622,7 +819,7 @@ async def get_telegram_user_or_create(
         telegram_user_data = await require_telegram_auth(request)
 
         # Получаем или создаем пользователя в БД
-        user = get_or_create_user_from_telegram_sync(telegram_user_data, db)
+        user = await get_or_create_user_from_telegram(telegram_user_data, db)
 
         if not user:
             logger.error("❌ Не удалось получить или создать пользователя")
