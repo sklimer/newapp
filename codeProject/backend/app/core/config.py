@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 class Settings(BaseSettings):
     # Database settings
     DATABASE_URL: str = Field(
-        default=os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql://postgresql://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
+        default=os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
         description="PostgreSQL connection URL"
     )
     ASYNC_DATABASE_URL: str = Field(
         default=os.getenv("ASYNC_DATABASE_URL",
-                          os.getenv("POSTGRES_URL", "postgresql+asyncpg://postgresql://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
+                          os.getenv("POSTGRES_URL", "postgresql+asyncpg://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
         description="PostgreSQL async connection URL"
     )
 
