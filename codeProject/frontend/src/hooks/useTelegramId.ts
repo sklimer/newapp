@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { userApi } from '../api/api';
 
 // Флаг для тестирования
-const TEST_MODE = false;
+const TEST_MODE = true;
 const TEST_TELEGRAM_ID = 5474350538;
 
 export const useTelegramId = () => {
