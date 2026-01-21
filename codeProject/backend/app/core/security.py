@@ -553,7 +553,7 @@ async def _create_new_user_async(
     Returns:
         Optional[Any]: Созданный объект пользователя или None
     """
-    logger.info("🆕 Создание нового пользователя")
+    logger.info(f"🆕 Создание нового пользователя {user_info['telegram_id']}")
 
     try:
         from app.models.users import User as UserModel
