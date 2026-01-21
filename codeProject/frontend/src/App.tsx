@@ -62,8 +62,9 @@ const AppContent = () => {
 
 function App() {
   return (
-      <TelegramAuth/>
+
     <Provider store={store}>
+      <TelegramAuth/>
       <ErrorBoundary>
         <AppContent />
       </ErrorBoundary>
