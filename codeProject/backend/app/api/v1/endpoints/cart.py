@@ -13,6 +13,7 @@ from app.models.cart import CartItem
 from app.models.menu import Product
 from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate, CartItemBatchUpdate
 
+
 router = APIRouter(redirect_slashes=False)
 logger = logging.getLogger(__name__)
 
@@ -170,7 +171,10 @@ async def get_cart(
     # Возвращаем объекты модели напрямую (теперь с загруженными продуктами)
     logger.info(f"Возвращено {len(cart_items)} элементов корзины для пользователя {telegram_id}")
     logger.info(f"Возвращено {cart_items[0].product.name}")
-    return cart_items
+    # Затем сериализуем через Pydantic
+    cart_items_response = [CartItemResponse.from_orm(item) for item in cart_items]
+    logger.info(f"Первый элемент после сериализации: {cart_items_response[0].dict()}")
+    return cart_items_response
 
 
 @router.put("/update", response_model=CartItemResponse)
