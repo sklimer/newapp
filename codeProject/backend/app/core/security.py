@@ -376,7 +376,6 @@ async def get_or_create_user_from_telegram(
             'first_name': telegram_user_data.get('first_name', ''),
             'last_name': telegram_user_data.get('last_name'),
             'username': telegram_user_data.get('username'),
-            'photo_url': telegram_user_data.get('photo_url'),
             'language_code': telegram_user_data.get('language_code'),
             'is_premium': telegram_user_data.get('is_premium', False),
         }
@@ -446,7 +445,6 @@ def get_or_create_user_from_telegram_sync(
             'first_name': telegram_user_data.get('first_name', ''),
             'last_name': telegram_user_data.get('last_name'),
             'username': telegram_user_data.get('username'),
-            'photo_url': telegram_user_data.get('photo_url'),
             'language_code': telegram_user_data.get('language_code'),
             'is_premium': telegram_user_data.get('is_premium', False),
         }
@@ -501,7 +499,6 @@ async def _update_existing_user_async(
         'first_name': 'first_name',
         'last_name': 'last_name',
         'username': 'username',
-        'photo_url': 'photo_url',
         'language_code': 'language_code',
         'is_premium': 'is_premium',
     }
@@ -570,7 +567,6 @@ async def _create_new_user_async(
             'first_name': user_info['first_name'],
             'last_name': user_info.get('last_name'),
             'username': user_info.get('username'),
-            'photo_url': user_info.get('photo_url'),
             'language_code': user_info.get('language_code'),
             'is_premium': user_info.get('is_premium', False),
             'referral_code': referral_code,
@@ -627,7 +623,6 @@ def _update_existing_user(
         'first_name': 'first_name',
         'last_name': 'last_name',
         'username': 'username',
-        'photo_url': 'photo_url',
         'language_code': 'language_code',
         'is_premium': 'is_premium',
     }
@@ -696,7 +691,6 @@ def _create_new_user(
             'first_name': user_info['first_name'],
             'last_name': user_info.get('last_name'),
             'username': user_info.get('username'),
-            'photo_url': user_info.get('photo_url'),
             'language_code': user_info.get('language_code'),
             'is_premium': user_info.get('is_premium', False),
             'referral_code': referral_code,
