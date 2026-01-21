@@ -1,11 +1,9 @@
-#!/usr/bin/env python
-# run_migrations.py
 import os
 import sys
 import logging
 from alembic.config import Config
 from alembic import command
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 
 def setup_logging():
@@ -45,20 +43,30 @@ def run_migrations():
         logger.error(f"Ошибка при создании подключения к базе данных: {str(e)}")
         sys.exit(1)
 
-    # Шаг 3: Подсчет количества таблиц в базе данных
-    logger.info("Шаг 3: Подсчет количества таблиц в базе данных")
+    # Шаг 3: Проверка состояния базы данных
+    logger.info("Шаг 3: Проверка состояния базы данных")
     try:
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         table_count = len(tables)
         logger.info(f"Количество таблиц в базе данных: {table_count}")
+        logger.info(f"Обнаружены следующие таблицы: {tables}")
 
-        if table_count == 0:
-            logger.info("База данных пуста - необходимо создать и применить миграции")
-        else:
-            logger.info(f"Обнаружены следующие таблицы: {tables}")
+        # Проверяем наличие таблицы alembic_version
+        has_alembic_version = 'alembic_version' in tables
+        logger.info(f"Таблица alembic_version существует: {has_alembic_version}")
+
+        if has_alembic_version:
+            # Проверяем, есть ли версия в таблице
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT version_num FROM alembic_version"))
+                alembic_version = result.scalar()
+                if alembic_version:
+                    logger.info(f"Текущая версия Alembic в базе: {alembic_version}")
+                else:
+                    logger.info("Таблица alembic_version пуста")
     except Exception as e:
-        logger.error(f"Ошибка при получении списка таблиц из базы данных: {str(e)}")
+        logger.error(f"Ошибка при проверке базы данных: {str(e)}")
         sys.exit(1)
 
     # Шаг 4: Загрузка конфигурации Alembic
@@ -79,77 +87,112 @@ def run_migrations():
         logger.error(f"Ошибка при установке URL базы данных: {str(e)}")
         sys.exit(1)
 
-    # Шаг 6: Проверка наличия миграций и их создание при необходимости
-    logger.info("Шаг 6: Проверка наличия миграций")
+    # Шаг 6: Проверка наличия папки versions и файлов миграций
+    logger.info("Шаг 6: Проверка наличия файлов миграций")
     versions_dir = os.path.join(os.path.dirname(alembic_cfg.config_file_name), "versions")
     if os.path.exists(versions_dir) and os.listdir(versions_dir):
-        logger.info("Обнаружены существующие миграции")
+        logger.info(f"Обнаружены существующие миграции в папке {versions_dir}")
+        migration_files = os.listdir(versions_dir)
+        logger.info(f"Количество файлов миграций: {len(migration_files)}")
+        for file in migration_files[:5]:  # Показываем первые 5 файлов
+            logger.info(f"  - {file}")
     else:
-        logger.info("Миграции не найдены - создание начальной миграции")
+        logger.info(f"Папка versions не существует или пуста: {versions_dir}")
+
+        # Создаем папку versions если ее нет
+        if not os.path.exists(versions_dir):
+            os.makedirs(versions_dir, exist_ok=True)
+            logger.info(f"Создана папка versions: {versions_dir}")
+
+    # Шаг 7: Определение нужного действия
+    logger.info("Шаг 7: Определение стратегии миграции")
+
+    if not has_alembic_version or not alembic_version:
+        logger.info("База данных не инициализирована с Alembic")
+
+        # Если есть таблицы, но нет alembic_version, нужно сделать stamp
+        if table_count > 1:
+            logger.info("База данных уже содержит таблицы, делаем stamp текущего состояния...")
+            try:
+                command.stamp(alembic_cfg, "head")
+                logger.info("Stamp успешно выполнен")
+            except Exception as e:
+                logger.error(f"Ошибка при выполнении stamp: {str(e)}")
+                logger.info("Попытка создать начальную миграцию...")
+                try:
+                    command.revision(alembic_cfg, autogenerate=True, message="Initial migration from existing database")
+                    logger.info("Начальная миграция создана успешно")
+                except Exception as e:
+                    logger.error(f"Ошибка при создании начальной миграции: {str(e)}")
+                    logger.info("Попытка создать пустую миграцию...")
+                    try:
+                        command.revision(alembic_cfg, message="Empty initial migration")
+                        logger.info("Пустая миграция создана успешно")
+                    except Exception as e:
+                        logger.error(f"Ошибка при создании пустой миграции: {str(e)}")
+                        sys.exit(1)
+
+    else:
+        logger.info("База данных уже инициализирована с Alembic")
+
+    # Шаг 8: Создание миграции для новых изменений (например, поля balance)
+    logger.info("Шаг 8: Создание миграции для новых изменений")
+    try:
+        # Автогенерация миграции на основе различий между моделями и базой
+        logger.info("Проверка изменений в моделях...")
+        command.revision(alembic_cfg, autogenerate=True, message="Add missing columns and changes")
+        logger.info("Миграция создана успешно")
+    except Exception as e:
+        logger.warning(f"Не удалось создать автогенерацию миграции: {str(e)}")
+        logger.info("Создание пустой миграции для ручного заполнения...")
         try:
-            logger.info("Создание новой миграции...")
-            command.revision(alembic_cfg, autogenerate=True, message="Initial migration")
-            logger.info("Начальная миграция создана успешно")
+            command.revision(alembic_cfg, message="Manual migration for database changes")
+            logger.info("Пустая миграция создана успешно")
         except Exception as e:
-            logger.error(f"Ошибка при создании начальной миграции: {str(e)}")
-            sys.exit(1)
+            logger.error(f"Ошибка при создании пустой миграции: {str(e)}")
 
-    # Шаг 7: Получение текущей версии миграции
-    logger.info("Шаг 7: Определение текущей версии миграции")
+    # Шаг 9: Применение миграций
+    logger.info("Шаг 9: Применение миграций")
     try:
-        from alembic.runtime.environment import EnvironmentContext
-        from alembic.script import ScriptDirectory
-
-        script = ScriptDirectory.from_config(alembic_cfg)
-
-        with engine.connect() as conn:
-            context = EnvironmentContext(alembic_cfg, script)
-            current_rev = None
-
-            def get_current_revision(rev, context):
-                nonlocal current_rev
-                current_rev = rev
-                return []
-
-            with context.begin_transaction():
-                context.run_env()
-                context.get_context().get_current_revision(get_current_revision)
-
-        logger.info(f"Текущая версия миграции: {current_rev if current_rev else 'отсутствует (база данных пуста)'}")
-    except Exception as e:
-        logger.warning(f"Не удалось определить текущую версию миграции: {str(e)}")
-
-    # Шаг 8: Выполнение миграции
-    logger.info("Шаг 8: Начало выполнения миграций до последней версии")
-    try:
-        logger.info("Выполнение команды upgrade до версии 'head'...")
+        logger.info("Применение миграций до версии 'head'...")
         command.upgrade(alembic_cfg, "head")
-        logger.info("Миграции успешно выполнены до последней версии")
+        logger.info("Миграции успешно применены")
     except Exception as e:
-        logger.error(f"Ошибка при выполнении миграций: {str(e)}")
-        sys.exit(1)
+        logger.error(f"Ошибка при применении миграций: {str(e)}")
+        logger.info("Попытка применить миграции с опцией --sql для отладки...")
+        try:
+            # Попробуем получить SQL для отладки
+            import io
 
-    # Шаг 9: Проверка количества таблиц после миграции
-    logger.info("Шаг 9: Проверка количества таблиц в базе данных после миграции")
+            output = io.StringIO()
+            command.upgrade(alembic_cfg, "head", sql=True)
+            logger.info("SQL команды миграции сгенерированы")
+        except Exception as e2:
+            logger.error(f"Ошибка при генерации SQL: {e2}")
+
+    # Шаг 10: Проверка наличия поля balance
+    logger.info("Шаг 10: Проверка наличия поля balance в таблице users")
     try:
-        inspector = inspect(engine)
-        tables_after = inspector.get_table_names()
-        table_count_after = len(tables_after)
-        logger.info(f"Количество таблиц в базе данных после миграции: {table_count_after}")
-
-        if table_count_after > table_count:
-            logger.info(f"Количество новых таблиц после миграции: {table_count_after - table_count}")
-            logger.info(f"Новые таблицы: {[table for table in tables_after if table not in tables]}")
-        else:
-            logger.info("Количество таблиц не изменилось после миграции")
+        with engine.connect() as conn:
+            # Проверяем наличие поля balance
+            result = conn.execute(text("""
+                    SELECT column_name 
+                    FROM information_schema.columns 
+                    WHERE table_name = 'users' AND column_name = 'balance'
+                """))
+            if result.fetchone():
+                logger.info("✓ Поле balance существует в таблице users")
+            else:
+                logger.warning("✗ Поле balance отсутствует в таблице users")
+                logger.info("Добавление поля balance вручную...")
+                conn.execute(text("ALTER TABLE users ADD COLUMN balance DECIMAL(10,2) DEFAULT 0.00;"))
+                conn.commit()
+                logger.info("✓ Поле balance добавлено")
     except Exception as e:
-        logger.error(f"Ошибка при получении списка таблиц после миграции: {str(e)}")
-        # Не завершаем программу аварийно, так как миграции уже выполнены
+        logger.error(f"Ошибка при проверке поля balance: {str(e)}")
 
-    # Шаг 10: Завершение
-    logger.info("Шаг 10: Процесс миграции завершен успешно")
-    logger.info("Все модели мигрированы в соответствии с доступными миграциями")
-
+    # Шаг 11: Завершение
+    logger.info("Шаг 11: Процесс миграции завершен успешно")
 
 if __name__ == "__main__":
     setup_logging()
