@@ -13,6 +13,7 @@ from app.models.cart import CartItem
 from app.models.menu import Product
 from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate, CartItemBatchUpdate, ProductResponse
 
+from app.api.v1.endpoints.util import get_user_from_db
 
 router = APIRouter(redirect_slashes=False)
 logger = logging.getLogger(__name__)
@@ -44,18 +45,7 @@ async def get_user_by_telegram_id(
     return final_telegram_id
 
 
-# Вспомогательная функция для получения пользователя из БД
-async def get_user_from_db(telegram_id: int, db: AsyncSession) -> User:
-    """Находит пользователя в БД по telegram_id"""
-    result = await db.execute(
-        select(User).where(User.telegram_id == telegram_id)
-    )
-    user = result.scalar_one_or_none()
 
-    if not user:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
-
-    return user
 
 
 @router.post("/add", response_model=CartItemResponse)

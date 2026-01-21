@@ -21,6 +21,7 @@ class User(Base):
     address_lat: Optional[Decimal] = Column(Numeric(precision=9, scale=6), nullable=True)
     address_lon: Optional[Decimal] = Column(Numeric(precision=9, scale=6), nullable=True)
     address_description: Optional[str] = Column(Text, nullable=True)
+    balance: Decimal = Column(Numeric(precision=10, scale=2), default=0.00)
     bonus_balance: Decimal = Column(Numeric(precision=10, scale=2), default=0.00)
     total_spent: Decimal = Column(Numeric(precision=10, scale=2), default=0.00)
     order_count: int = Column(Integer, default=0)

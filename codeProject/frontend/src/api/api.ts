@@ -66,7 +66,12 @@ function safeDecodeURIComponent(str: string): string {
 }
 
 export const userApi = {
-    // Метод для проверки initData Telegram
+    getUserProfile: async (telegramId: number) => {
+    return apiClient.get('/profile/', {
+      params: { telegram_id: telegramId }
+    });
+  },
+
   verifyTelegramInitData: (initData: string) =>
     apiClient.post('/auth/verify-telegram',
       { initData }, // Тело запроса

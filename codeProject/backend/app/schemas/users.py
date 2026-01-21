@@ -58,3 +58,17 @@ class UserResponse(UserBase):
 
     class Config:
         from_attributes = True
+
+class UserProfile(UserBase):
+    id: int
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    bonus_balance: float
+    balance: float
+    total_spent: float
+    order_count: int
+    is_active: bool
+    is_blocked: bool
+
+    class Config:
+        from_attributes = True
