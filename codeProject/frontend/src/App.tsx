@@ -64,8 +64,9 @@ function App() {
   return (
 
     <Provider store={store}>
-      <TelegramAuth/>
+
       <ErrorBoundary>
+      <TelegramAuth />
         <AppContent />
       </ErrorBoundary>
     </Provider>
