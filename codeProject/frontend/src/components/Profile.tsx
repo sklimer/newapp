@@ -13,12 +13,12 @@ const Profile: React.FC = () => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const { telegramId, loading: telegramLoading, error: telegramError } = useTelegramId();
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
-        const response = await userApi.getUserProfile();
+        const response = await userApi.getUserProfile(telegramId);
         setProfile(response.data);
       } catch (err) {
         console.error('Error fetching profile:', err);
