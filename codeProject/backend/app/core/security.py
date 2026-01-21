@@ -562,7 +562,7 @@ async def _create_new_user_async(
 
         # Генерируем реферальный код
         telegram_id = user_info['telegram_id']
-        referral_code = f"REF{telegram_id[-6:].upper()}" if len(telegram_id) >= 6 else f"REF{telegram_id}"
+        referral_code = f"REF{telegram_id[-6:].upper()}" if len(str(telegram_id)) >= 6 else f"REF{telegram_id}"
 
         # Подготавливаем данные для создания
         create_data = {
