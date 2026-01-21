@@ -567,10 +567,7 @@ async def _create_new_user_async(
             'first_name': user_info['first_name'],
             'last_name': user_info.get('last_name'),
             'username': user_info.get('username'),
-            'language_code': user_info.get('language_code'),
-            'is_premium': user_info.get('is_premium', False),
             'referral_code': referral_code,
-            'last_login': current_time,
             'created_at': current_time,
             'updated_at': current_time,
         }
@@ -691,10 +688,7 @@ def _create_new_user(
             'first_name': user_info['first_name'],
             'last_name': user_info.get('last_name'),
             'username': user_info.get('username'),
-            'language_code': user_info.get('language_code'),
-            'is_premium': user_info.get('is_premium', False),
             'referral_code': referral_code,
-            'last_login': current_time,
             'created_at': current_time,
             'updated_at': current_time,
         }
