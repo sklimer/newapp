@@ -6,10 +6,25 @@ from pydantic import Field, validator, field_validator
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 
+# Определяем путь к .env файлу
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # Поднимаемся на 2 уровня вверх
+ENV_PATH = BASE_DIR / ".env"
+
+logger.warning(f"🔍 Ищу .env файл по пути: {ENV_PATH}")
+logger.warning(f"📁 Файл существует: {ENV_PATH.exists()}")
+
+# Загружаем .env файл
+if ENV_PATH.exists():
+    load_dotenv(ENV_PATH)
+    logger.warning(f"✅ .env файл загружен из: {ENV_PATH}")
 
 class Settings(BaseSettings):
     # Database settings
+
     DATABASE_URL: str = Field(
         default=os.getenv("DATABASE_URL", os.getenv("POSTGRES_URL", "postgresql://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
         description="PostgreSQL connection URL"
@@ -19,7 +34,7 @@ class Settings(BaseSettings):
                           os.getenv("POSTGRES_URL", "postgresql+asyncpg://res_db_user:S0ykpH6FI2UAGUSsHVkcGlEMlrhSBFJY@dpg-d5n9nln5r7bs73dkso4g-a/res_db")),
         description="PostgreSQL async connection URL"
     )
-
+    logger.warning(f'DATABASE_URL = {DATABASE_URL}')
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Логируем значения (скрыв пароль)

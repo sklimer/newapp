@@ -83,6 +83,7 @@ VITE_API_BASE_URL=http://localhost:8000
 ### 4. Миграции базы данных
 ```bash
 cd backend
+alembic revision --autogenerate -m "Описание изменений"
 alembic upgrade head
 ```
 

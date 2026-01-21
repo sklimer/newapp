@@ -26,6 +26,7 @@ export default defineConfig({
   },
 
   server: !isProduction ? {
+    allowedHosts: ['dev.proxy.example.com'], // добавьте сюда ваш хост
     host: '0.0.0.0',
     port: 5173,
     hmr: { overlay: true },

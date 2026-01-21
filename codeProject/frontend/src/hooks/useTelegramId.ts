@@ -2,75 +2,81 @@
 import { useState, useEffect } from 'react';
 import { userApi } from '../api/api';
 
-// Флаг для тестирования
-const TEST_MODE = true;
+// Константа для тестового ID (используется только как fallback)
 const TEST_TELEGRAM_ID = 5474350538;
 
 export const useTelegramId = () => {
   const [telegramId, setTelegramId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isTestMode, setIsTestMode] = useState(false);
 
   useEffect(() => {
-    const fetchTelegramId = () => {
+    const fetchTelegramId = async () => {
       try {
-        // РЕЖИМ ТЕСТИРОВАНИЯ - всегда возвращаем тестовый ID
-        if (TEST_MODE) {
-          console.log('Тестовый режим: используем фиксированный Telegram ID:', TEST_TELEGRAM_ID);
-          setTelegramId(TEST_TELEGRAM_ID);
-          setLoading(false);
-          return;
-        }
+        // Основная логика: пытаемся получить реальный Telegram ID
+        let foundId: number | null = null;
 
-        // ПРОДАКШН РЕЖИМ - оригинальная логика
+        // 1. Пытаемся получить из Telegram WebApp
         if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
           const initData = window.Telegram?.WebApp?.initData;
           if (initData) {
             const id = userApi.getTelegramID(initData);
             if (id) {
-              setTelegramId(id);
-            } else {
-              setError('Не удалось получить Telegram ID из initData');
+              foundId = id;
+              console.log('Получен Telegram ID из WebApp:', id);
             }
-          } else {
-            setError('Telegram WebApp initData не доступен');
           }
-        } else {
-          // Если не в Telegram WebApp, пробуем получить ID из URL или localStorage
+        }
+
+        // 2. Если не получили из WebApp, пробуем из URL
+        if (!foundId && typeof window !== 'undefined') {
           const params = new URLSearchParams(window.location.search);
           const urlTelegramId = params.get('telegram_id');
 
           if (urlTelegramId) {
             const id = parseInt(urlTelegramId);
             if (!isNaN(id)) {
-              setTelegramId(id);
+              foundId = id;
               console.log('Получен Telegram ID из URL:', id);
-            } else {
-              setError('Некорректный Telegram ID в URL');
-            }
-          } else {
-            // Или можно сохранять в localStorage при первом входе
-            const storedId = localStorage.getItem('test_telegram_id');
-            if (storedId) {
-              const id = parseInt(storedId);
-              if (!isNaN(id)) {
-                setTelegramId(id);
-                console.log('Получен Telegram ID из localStorage:', id);
-              }
-            } else {
-              // Создаем тестовый ID для разработки
-              const testId = TEST_TELEGRAM_ID;
-              localStorage.setItem('test_telegram_id', testId.toString());
-              setTelegramId(testId);
-              console.log('Создан тестовый Telegram ID:', testId);
             }
           }
         }
+
+        // 3. Если не получили из URL, пробуем из localStorage
+        if (!foundId && typeof window !== 'undefined') {
+          const storedId = localStorage.getItem('telegram_id');
+          if (storedId) {
+            const id = parseInt(storedId);
+            if (!isNaN(id)) {
+              foundId = id;
+              console.log('Получен Telegram ID из localStorage:', id);
+            }
+          }
+        }
+
+        // 4. Если получили реальный ID - используем его
+        if (foundId) {
+          setTelegramId(foundId);
+          setIsTestMode(false);
+          // Сохраняем в localStorage для будущих сессий
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('telegram_id', foundId.toString());
+          }
+        } else {
+          // 5. Если не удалось получить реальный ID - используем тестовый
+          console.warn('Не удалось получить реальный Telegram ID. Используем тестовый ID:', TEST_TELEGRAM_ID);
+          setTelegramId(TEST_TELEGRAM_ID);
+          setIsTestMode(true);
+          setError('Используется тестовый режим. Реальный Telegram ID не найден.');
+        }
       } catch (err) {
+        // 6. При ошибке также используем тестовый ID
         console.error('Ошибка при получении Telegram ID:', err);
-        // В случае ошибки все равно используем тестовый ID
+        console.warn('Используем тестовый ID из-за ошибки:', TEST_TELEGRAM_ID);
         setTelegramId(TEST_TELEGRAM_ID);
-        console.log('Используем тестовый Telegram ID из-за ошибки:', TEST_TELEGRAM_ID);
+        setIsTestMode(true);
+        setError(`Ошибка: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}. Используется тестовый режим.`);
       } finally {
         setLoading(false);
       }
@@ -87,72 +93,78 @@ export const useTelegramId = () => {
     setError(null);
 
     try {
-      // В тестовом режиме просто возвращаем фиксированный ID
-      if (TEST_MODE) {
-        setTelegramId(TEST_TELEGRAM_ID);
-        setLoading(false);
-        return;
-      }
+      // Повторяем ту же логику, что и в основном эффекте
+      let foundId: number | null = null;
 
-      // Оригинальная логика для продакшн
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         const initData = window.Telegram?.WebApp?.initData;
         if (initData) {
           const id = userApi.getTelegramID(initData);
           if (id) {
-            setTelegramId(id);
-          } else {
-            setError('Не удалось получить Telegram ID из initData');
+            foundId = id;
           }
-        } else {
-          setError('Telegram WebApp initData не доступен');
+        }
+      }
+
+      if (!foundId && typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const urlTelegramId = params.get('telegram_id');
+        if (urlTelegramId) {
+          const id = parseInt(urlTelegramId);
+          if (!isNaN(id)) foundId = id;
+        }
+      }
+
+      if (!foundId && typeof window !== 'undefined') {
+        const storedId = localStorage.getItem('telegram_id');
+        if (storedId) {
+          const id = parseInt(storedId);
+          if (!isNaN(id)) foundId = id;
+        }
+      }
+
+      if (foundId) {
+        setTelegramId(foundId);
+        setIsTestMode(false);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('telegram_id', foundId.toString());
         }
       } else {
-        // Если не в Telegram, используем тестовый ID
         setTelegramId(TEST_TELEGRAM_ID);
-        console.log('Обновление: используем тестовый Telegram ID:', TEST_TELEGRAM_ID);
+        setIsTestMode(true);
+        setError('Используется тестовый режим. Реальный Telegram ID не найден.');
       }
     } catch (err) {
       console.error('Ошибка при обновлении Telegram ID:', err);
-      // Всегда возвращаем тестовый ID при ошибке
       setTelegramId(TEST_TELEGRAM_ID);
+      setIsTestMode(true);
+      setError(`Ошибка при обновлении. Используется тестовый режим.`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Альтернативная упрощенная версия для быстрого тестирования
-  const useTestTelegramIdOnly = () => {
-    useEffect(() => {
-      console.log('Упрощенный тестовый режим: используем Telegram ID', TEST_TELEGRAM_ID);
-      setTelegramId(TEST_TELEGRAM_ID);
-      setLoading(false);
-    }, []);
-
-    return { telegramId: TEST_TELEGRAM_ID, loading: false, error: null, refreshTelegramId: () => {} };
+  return {
+    telegramId,
+    loading,
+    error,
+    refreshTelegramId,
+    isTestMode // Добавляем информацию о том, используется ли тестовый режим
   };
-
-  // Для быстрого переключения между режимами
-  const SIMPLE_TEST_MODE = true;
-
-  if (SIMPLE_TEST_MODE) {
-    return useTestTelegramIdOnly();
-  }
-
-  return { telegramId, loading, error, refreshTelegramId };
 };
 
-// Альтернативный хук для тестирования без лишней логики
+// Альтернативный хук для принудительного тестового режима (для разработки)
 export const useTestTelegramId = () => {
   return {
     telegramId: TEST_TELEGRAM_ID,
     loading: false,
     error: null,
-    refreshTelegramId: () => console.log('Тестовый ID обновлен:', TEST_TELEGRAM_ID)
+    refreshTelegramId: () => console.log('Тестовый ID обновлен:', TEST_TELEGRAM_ID),
+    isTestMode: true
   };
 };
 
-// Хук для продакшн (оригинальная логика)
+// Хук для продакшн (оригинальная логика без fallback)
 export const useRealTelegramId = () => {
   const [telegramId, setTelegramId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -188,15 +200,11 @@ export const useRealTelegramId = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const refreshTelegramId = () => {
-    setLoading(true);
-    setError(null);
-    // Перезагружаем через 100мс для эмуляции запроса
-    setTimeout(() => {
-      setTelegramId(TEST_TELEGRAM_ID); // Или оригинальная логика
-      setLoading(false);
-    }, 100);
-  };
 
-  return { telegramId, loading, error, refreshTelegramId };
+  return {
+    telegramId,
+    loading,
+    error,
+    isTestMode: false
+  };
 };
