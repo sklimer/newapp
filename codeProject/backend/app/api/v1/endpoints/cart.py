@@ -11,7 +11,7 @@ from app.api.deps import get_db, get_async_db
 from app.models.users import User
 from app.models.cart import CartItem
 from app.models.menu import Product
-from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate, CartItemBatchUpdate
+from app.schemas.cart import CartItemResponse, CartItemCreate, CartItemUpdate, CartItemBatchUpdate, ProductResponse
 
 
 router = APIRouter(redirect_slashes=False)
@@ -122,19 +122,15 @@ async def get_cart(
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
         db: AsyncSession = Depends(get_async_db)
 ):
-    """
-    Получает корзину пользователя по telegram_id
-    Использование: /?telegram_id=123456789
-    """
     logger.info(f'Получение корзины для пользователя {telegram_id}')
 
     # Получаем пользователя
     user = await get_user_from_db(telegram_id, db)
     logger.info(f"Найден пользователь с ID {user.id} для telegram_id {telegram_id}")
 
-    # Используем selectinload для жадной загрузки связанных данных
+    # Используем selectinload для жадной загрузки
     stmt = select(CartItem).options(
-        selectinload(CartItem.product)  # Жадная загрузка продукта
+        selectinload(CartItem.product)
     ).where(
         CartItem.user_id == user.id
     )
@@ -144,49 +140,39 @@ async def get_cart(
 
     logger.info(f"Найдено {len(cart_items)} товаров в корзине пользователя {telegram_id}")
 
-    # Проверяем загрузку продуктов (теперь это безопасно)
-    if cart_items:
-        first_item = cart_items[0]
-        if first_item.product:
-            logger.info(f"Первый товар в корзине: {first_item.product.name}, цена: {first_item.product.price}")
-        else:
-            logger.warning(f"Продукт для первого элемента корзины не загружен")
-
-    # Удаляем элементы корзины, для которых нет соответствующих продуктов
-    items_to_delete = []
+    # Явная сериализация
+    cart_items_response = []
     for item in cart_items:
-        if not item.product:
-            logger.warning(f"Продукт с ID {item.product_id} не найден для элемента корзины {item.id}")
-            items_to_delete.append(item)
+        # Создаем ProductResponse если продукт есть
+        product_data = None
+        if item.product:
+            product_data = ProductResponse.from_orm(item.product)
 
-    # Удаляем элементы без продуктов
-    if items_to_delete:
-        for item in items_to_delete:
-            await db.delete(item)
-        await db.commit()
-        logger.info(f"Удалено {len(items_to_delete)} элементов корзины без соответствующих продуктов")
-        # Обновляем список, удаляя удаленные элементы
-        cart_items = [item for item in cart_items if item not in items_to_delete]
+        # Создаем CartItemResponse
+        response_item = CartItemResponse(
+            id=item.id,
+            user_id=item.user_id,
+            product_id=item.product_id,
+            quantity=item.quantity,
+            created_at=item.created_at,
+            updated_at=item.updated_at,
+            product=product_data  # Передаем данные продукта
+        )
 
-    # Возвращаем объекты модели напрямую (теперь с загруженными продуктами)
-    logger.info(f"Возвращено {len(cart_items)} элементов корзины для пользователя {telegram_id}")
-    logger.info(f"Возвращено {cart_items[0].product.name}")
-    # Затем сериализуем через Pydantic
-    cart_items_response = [CartItemResponse.from_orm(item) for item in cart_items]
-    logger.info(f"Первый элемент после сериализации: {cart_items_response[0].dict()}")
+        cart_items_response.append(response_item)
 
-    item = cart_items[0]
-    cart_item_response = CartItemResponse(
-        id=item.id,
-        user_id=item.user_id,
-        product_id=item.product_id,
-        quantity=item.quantity,
-        created_at=item.created_at,
-        updated_at=item.updated_at,
-        product=ProductResponse.from_orm(item.product) if item.product else None
-    )
-    logger.info(f"Manually created: {cart_item_response.dict()}")
-    cart_items_response[0] = cart_item_response
+        # Логирование для отладки
+        logger.info(f"Создан CartItemResponse: id={item.id}, product_id={item.product_id}")
+        if product_data:
+            logger.info(f"Продукт: {product_data.name}, цена: {product_data.price}")
+
+    # Логгируем первый элемент после сериализации
+    if cart_items_response:
+        logger.info(f"Первый элемент после сериализации: {cart_items_response[0].dict()}")
+        if cart_items_response[0].product:
+            logger.info(f"Продукт первого элемента: {cart_items_response[0].product.name}")
+
+    logger.info(f"Возвращено {len(cart_items_response)} элементов корзины")
     return cart_items_response
 
 
