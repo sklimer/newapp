@@ -45,7 +45,6 @@ const AppContent = () => {
 
     <GlobalCartSync>
       <BrowserRouter>
-      <TelegramAuth>
         <div className="App">
           <Header />
           <main>
@@ -54,7 +53,6 @@ const AppContent = () => {
             </div>
           </main>
         </div>
-        </TelegramAuth>
       </BrowserRouter>
     </GlobalCartSync>
 
