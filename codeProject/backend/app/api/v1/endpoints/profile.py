@@ -60,6 +60,7 @@ async def get_profile(
     # Создаем профиль пользователя на основе модели User
     user_profile = UserProfile(
         id=user.id,
+        telegram_id=user.telegram_id,
         username=user.username,
         first_name=user.first_name,
         bonus_balance=float(user.bonus_balance) if user.bonus_balance else 0.0,
