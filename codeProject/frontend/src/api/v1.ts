@@ -48,18 +48,7 @@ export const userApiExtended = {
   ...userApi,
   get_current_user_from_telegram: (initData: string) =>
     // Pass initData in the request body for Telegram authentication
-    baseApiClient.post('/auth/telegram', { initData }),
-
-  // Add the missing verifyTelegramInitData method
-  verifyTelegramInitData: (initData: string) =>
-    baseApiClient.post('/auth/verify-telegram',
-      { initData },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      }
-    ),
+    baseApiClient.post('/auth/telegram', { initData })
 };
 
 // Export userApiExtended as userApi to maintain compatibility
