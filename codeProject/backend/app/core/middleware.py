@@ -19,7 +19,8 @@ class TelegramWebAppMiddleware(BaseHTTPMiddleware):
         ]
         # Paths that require Telegram Web App but should have more flexible checking
         self.flexible_cart_paths = [
-            "/api/v1/cart/"
+            "/api/v1/cart/",
+            "/api/v1/profile/"
         ]
         # Paths that should be accessible without Telegram Web App requirements
         self.public_paths = [
