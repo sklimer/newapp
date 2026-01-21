@@ -140,7 +140,26 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
       setErrorMessage(`Ошибка сервера: ${response.status}`);
     }
   } catch (error: any) {
-    // ... остальная обработка ошибок
+    addLog(`❌ Ошибка при проверке аутентификации: ${error.message || 'Неизвестная ошибка'}`);
+    console.error('Telegram auth error:', error);
+
+    // Проверяем тип ошибки
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      setAuthStatus('error');
+      setErrorMessage('Таймаут соединения с сервером');
+    } else if (error.response) {
+      // Ошибка ответа от сервера
+      setAuthStatus('error');
+      setErrorMessage(`Ошибка сервера: ${error.response.status} - ${error.response.statusText}`);
+    } else if (error.request) {
+      // Ошибка запроса (нет соединения с сервером)
+      setAuthStatus('error');
+      setErrorMessage('Нет соединения с сервером. Проверьте подключение к интернету.');
+    } else {
+      // Другие ошибки
+      setAuthStatus('error');
+      setErrorMessage(error.message || 'Произошла ошибка при аутентификации');
+    }
   }
 }, [addLog]);
 
