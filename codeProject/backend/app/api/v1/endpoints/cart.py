@@ -183,7 +183,7 @@ async def get_cart(
         quantity=item.quantity,
         created_at=item.created_at,
         updated_at=item.updated_at,
-        product=item.product
+        product=ProductResponse.from_orm(item.product) if item.product else None
     )
     logger.info(f"Manually created: {cart_item_response.dict()}")
     cart_items_response[0] = cart_item_response
