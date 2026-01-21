@@ -61,6 +61,7 @@ class UserResponse(UserBase):
 
 class UserProfile(UserBase):
     id: int
+    telegram_id: int
     username: Optional[str] = None
     first_name: Optional[str] = None
     bonus_balance: float
