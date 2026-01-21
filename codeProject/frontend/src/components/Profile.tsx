@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { userApi } from '../api/api';
+import { useTelegramId } from '../hooks/useTelegramId';
 
 interface UserProfile {
   id: number;
