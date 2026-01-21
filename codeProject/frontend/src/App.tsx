@@ -42,7 +42,7 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
 const AppContent = () => {
   return (
 
-    <TelegramAuth>
+
     <GlobalCartSync>
       <BrowserRouter>
         <div className="App">
@@ -55,13 +55,14 @@ const AppContent = () => {
         </div>
       </BrowserRouter>
     </GlobalCartSync>
-    </TelegramAuth>
+
 
   );
 };
 
 function App() {
   return (
+      <TelegramAuth/>
     <Provider store={store}>
       <ErrorBoundary>
         <AppContent />
