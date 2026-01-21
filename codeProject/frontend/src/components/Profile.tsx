@@ -19,7 +19,9 @@ const Profile: React.FC = () => {
     const fetchProfile = async () => {
       try {
         setLoading(true);
+        console.log(`Profile for telegramId: ${telegramId}`);
         const response = await userApi.getUserProfile(telegramId);
+        console.log(`Profile response.data: ${response.data}`);
         setProfile(response.data);
       } catch (err) {
         console.error('Error fetching profile:', err);
