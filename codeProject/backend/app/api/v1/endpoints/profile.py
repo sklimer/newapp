@@ -23,6 +23,7 @@ async def get_profile(
         telegram_id: int = Query(..., description="Telegram ID пользователя"),
         db: AsyncSession = Depends(get_async_db)
 ):
+    logger.info(f"Запрсо профиля для telegram_id {telegram_id}")
     """
     Get current user profile
     """
