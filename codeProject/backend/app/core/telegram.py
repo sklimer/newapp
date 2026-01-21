@@ -239,9 +239,9 @@ def is_running_in_telegram_web_app(request: Request) -> bool:
                           request.headers.get("x-telegram-web-app-init-data")
         referer = request.headers.get("Referer", "").lower()
 
-        logger.debug(f"🌐 User-Agent: {user_agent[:100]}...")
-        logger.debug(f"🌐 Referer: {referer[:100]}...")
-        logger.debug(f"🌐 Telegram Header present: {telegram_header is not None}")
+        logger.info(f"🌐 User-Agent: {user_agent[:100]}...")
+        logger.info(f"🌐 Referer: {referer[:100]}...")
+        logger.info(f"🌐 Telegram Header present: {telegram_header is not None}")
 
         # Проверяем признаки Telegram Web App
         is_telegram = (
