@@ -174,6 +174,19 @@ async def get_cart(
     # Затем сериализуем через Pydantic
     cart_items_response = [CartItemResponse.from_orm(item) for item in cart_items]
     logger.info(f"Первый элемент после сериализации: {cart_items_response[0].dict()}")
+
+    item = cart_items[0]
+    cart_item_response = CartItemResponse(
+        id=item.id,
+        user_id=item.user_id,
+        product_id=item.product_id,
+        quantity=item.quantity,
+        created_at=item.created_at,
+        updated_at=item.updated_at,
+        product=item.product
+    )
+    logger.info(f"Manually created: {cart_item_response.dict()}")
+    cart_items_response[0] = cart_item_response
     return cart_items_response
 
 
