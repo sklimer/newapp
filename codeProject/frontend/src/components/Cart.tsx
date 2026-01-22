@@ -12,6 +12,8 @@ const Cart = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   const { telegramId, loading: telegramLoading, error: telegramError } = useTelegramId();
+    console.log('cart tsx { telegramId, loading: telegramLoading, error: telegramError } = useTelegramId();:', telegramId);
+    console.log('cart tsx { telegramError } = useTelegramId();:', telegramError);
 
   // Загружаем корзину с сервера при монтировании компонента, если доступен telegramId
   useEffect(() => {

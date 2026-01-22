@@ -29,7 +29,7 @@ export default defineConfig({
     allowedHosts: ['dev.proxy.example.com'], // добавьте сюда ваш хост
     host: '0.0.0.0',
     port: 5173,
-    hmr: { overlay: true },
+    hmr: { overlay: false },
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

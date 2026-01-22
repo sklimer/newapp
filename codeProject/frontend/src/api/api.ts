@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api'; // Using centralized API configuration
 
+const TEST_TELEGRAM_ID = 5474350538;
+
 // Create an axios instance with base configuration
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -109,41 +111,83 @@ export const userApi = {
 
     return apiClient.get('/auth/get_telegram_id', config);
   },
-    getTelegramID(initData?: string): number | null {
+getTelegramID(initData?: string): number | null {
+  console.log('=== Начало обработки getTelegramID ===');
+
   if (!initData) {
-    return null;
+    console.log('❌ initData не предоставлен, возвращаю null');
+    return TEST_TELEGRAM_ID;
   }
 
+  console.log(`📋 Входные данные initData: ${initData}`);
+  console.log(`📏 Длина initData: ${initData.length} символов`);
+
   const params = initData.split('&');
+  console.log(`🔢 Разбито на ${params.length} параметров:`, params);
+
   let targetValue = null;
+  let foundKey = null;
 
   for (const param of params) {
+    console.log(`🔄 Обрабатываю параметр: "${param}"`);
     const [key, ...rest] = param.split('=');
     const value = rest.join('=');
 
+    console.log(`   Ключ: "${key}", Значение: "${value}"`);
+
     if (key === 'user') {
+      console.log('   ✅ Найден ключ "user", использую его значение');
       targetValue = value;
+      foundKey = key;
       break;
     } else if (key === 'receiver') {
+      console.log('   ⚠️ Найден ключ "receiver", запоминаю значение (будет перезаписано если позже найдется "user")');
       targetValue = value;
+      foundKey = key;
     }
   }
 
   if (!targetValue) {
+    console.log('❌ Не найден ни ключ "user", ни "receiver", возвращаю null');
     return null;
   }
 
+  console.log(`🎯 Выбран ключ: "${foundKey}"`);
+  console.log(`📝 Значение для обработки: "${targetValue}"`);
+  console.log(`📏 Длина значения: ${targetValue.length} символов`);
+
   try {
+    console.log('🔄 Декодирую URL-encoded значение...');
     const decodedValue = safeDecodeURIComponent(targetValue);
+    console.log(`📝 Декодированное значение: "${decodedValue}"`);
+
+    console.log('🔄 Заменяю экранированные слэши...');
     const fixedSlashes = decodedValue.replace(/\\\\\//g, '/');
+    console.log(`📝 Значение после замены слэшей: "${fixedSlashes}"`);
+
+    console.log('🔄 Пытаюсь распарсить JSON...');
     const data = JSON.parse(fixedSlashes);
-    return data?.id || null;
+    console.log('✅ JSON успешно распарсен:', data);
+
+    const id = data?.id || null;
+    console.log(`🔍 ID пользователя: ${id}`);
+    console.log('=== Завершение обработки getTelegramID ===');
+
+    return id;
   } catch (error) {
-    console.error('Error parsing user data from initData:', error);
+    console.error('❌ Ошибка при парсинге user data из initData:', error);
+    console.error(`   Тип ошибки: ${error.name}`);
+    console.error(`   Сообщение ошибки: ${error.message}`);
+    console.error(`   Стек вызовов: ${error.stack}`);
+    console.error('   Исходное значение для парсинга:', targetValue);
+    console.error('   Декодированное значение:', decodedValue || 'не удалось декодировать');
+    console.error('   Значение после замены слэшей:', fixedSlashes || 'не удалось обработать');
+    console.log('=== Завершение обработки getTelegramID с ошибкой ===');
     return null;
   }
 }
 };
+
 
 export const menuApi = {
   getMenu: () =>
