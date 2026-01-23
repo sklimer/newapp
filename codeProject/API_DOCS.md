@@ -1,5 +1,124 @@
 # API Documentation
 
+## Addresses API
+
+### Get User Addresses
+```
+GET /api/v1/addresses
+```
+
+**Description:** Retrieve all saved addresses for the authenticated user.
+
+**Authentication:** Requires Telegram Web App environment with valid init data in headers.
+
+**Headers:**
+- `x-telegram-web-app-init-data`: Telegram init data
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "address": "ул. Примерная, д. 10, кв. 15",
+    "lat": 55.123456,
+    "lon": 37.123456,
+    "is_default": true,
+    "created_at": "2023-01-01T00:00:00Z",
+    "updated_at": "2023-01-01T00:00:00Z"
+  }
+]
+```
+
+### Save User Address
+```
+POST /api/v1/addresses
+```
+
+**Description:** Save a new address for the authenticated user.
+
+**Authentication:** Requires Telegram Web App environment with valid init data in headers.
+
+**Headers:**
+- `x-telegram-web-app-init-data`: Telegram init data
+
+**Request Body:**
+```json
+{
+  "address": "ул. Примерная, д. 10, кв. 15",
+  "lat": 55.123456,
+  "lon": 37.123456,
+  "is_default": true
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "address": "ул. Примерная, д. 10, кв. 15",
+  "lat": 55.123456,
+  "lon": 37.123456,
+  "is_default": true,
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-01T00:00:00Z"
+}
+```
+
+### Update User Address
+```
+PUT /api/v1/addresses/{id}
+```
+
+**Description:** Update an existing address for the authenticated user.
+
+**Authentication:** Requires Telegram Web App environment with valid init data in headers.
+
+**Headers:**
+- `x-telegram-web-app-init-data`: Telegram init data
+
+**Request Body:**
+```json
+{
+  "address": "ул. Обновленная, д. 20, кв. 25",
+  "lat": 55.123457,
+  "lon": 37.123457,
+  "is_default": false
+}
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "address": "ул. Обновленная, д. 20, кв. 25",
+  "lat": 55.123457,
+  "lon": 37.123457,
+  "is_default": false,
+  "created_at": "2023-01-01T00:00:00Z",
+  "updated_at": "2023-01-02T00:00:00Z"
+}
+```
+
+### Delete User Address
+```
+DELETE /api/v1/addresses/{id}
+```
+
+**Description:** Delete an existing address for the authenticated user.
+
+**Authentication:** Requires Telegram Web App environment with valid init data in headers.
+
+**Headers:**
+- `x-telegram-web-app-init-data`: Telegram init data
+
+**Response:**
+```
+Status: 204 No Content
+```
+
 ## Profile Endpoints
 
 ### Get Profile
