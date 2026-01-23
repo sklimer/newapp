@@ -3,6 +3,7 @@ from app.api.v1.endpoints import (
     admin,
     analytics,
     auth,
+    auth_jwt,
     bonus,
     business,
     cart,
@@ -32,3 +33,4 @@ api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
 api_router.include_router(business.router, prefix="/business", tags=["business"])
 api_router.include_router(profile.router, prefix="/profile", tags=["profile"])
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
+api_router.include_router(auth_jwt.router, prefix="/auth-jwt", tags=["auth-jwt"])
