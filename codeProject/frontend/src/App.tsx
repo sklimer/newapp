@@ -5,7 +5,8 @@ import { store } from './store/store';
 import Header from './components/Header';
 import RouterComponent from './router/Router';
 import GlobalCartSync from './components/GlobalCartSync';
-import TelegramAuth from './components/TelegramAuth'
+import TelegramAuth from './components/TelegramAuth';
+import { AuthProvider } from './hooks/useAuth';
 
 // Error boundary component
 class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
@@ -41,25 +42,24 @@ class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
 // Component to handle cart initialization
 const AppContent = () => {
   return (
+    <AuthProvider>
+      <GlobalCartSync>
+        <BrowserRouter>
+          <div className="App">
+            <Header />
+            <main>
 
-       <GlobalCartSync>
-      <BrowserRouter>
-        <div className="App">
-          <Header />
-          <main>
+              <div className="content-wrapper">
+                <RouterComponent />
+                <TelegramAuth>
 
-            <div className="content-wrapper">
-              <RouterComponent />
-              <TelegramAuth>
-
-              </TelegramAuth>
-            </div>
-          </main>
-        </div>
-      </BrowserRouter>
-    </GlobalCartSync>
-
-
+                </TelegramAuth>
+              </div>
+            </main>
+          </div>
+        </BrowserRouter>
+      </GlobalCartSync>
+    </AuthProvider>
   );
 };
 
