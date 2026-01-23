@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { userApi } from '../api/v1';
+import { useAuth } from '../hooks/useAuth';
 
 interface TelegramAuthProps {
   children: React.ReactNode;
@@ -31,8 +31,9 @@ declare global {
     };
   }
 }
-// const response = await userApi.verify('1');
+
 const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
+  const { user, isAuthenticated, isLoading, loginWithTelegram, initializeAuth } = useAuth();
   const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'not_telegram' | 'error' | 'showing_response'>('checking');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [userData, setUserData] = useState<TelegramUserData | null>(null);
@@ -51,98 +52,94 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
   // Получение initData
   const getInitDataManually = (): string => {
      // Приоритет 1: Официальный API Telegram
-  if (window.Telegram?.WebApp?.initData) {
-    console.log('Используем данные из Telegram.WebApp.initData');
-    return window.Telegram.WebApp.initData;
-  }
-
-  // Приоритет 2: Из URL (для дебага и альтернативных запусков)
-  try {
-    const urlParams = new URLSearchParams(window.location.search);
-    const tgWebAppData = urlParams.get('tgWebAppData');
-
-    if (tgWebAppData) {
-      console.log('Используем данные из URL параметра tgWebAppData');
-      return decodeURIComponent(tgWebAppData);
+    if (window.Telegram?.WebApp?.initData) {
+      console.log('Используем данные из Telegram.WebApp.initData');
+      return window.Telegram.WebApp.initData;
     }
 
-    // Проверяем hash часть (альтернативный формат)
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const hashData = hashParams.get('tgWebAppData');
+    // Приоритет 2: Из URL (для дебага и альтернативных запусков)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tgWebAppData = urlParams.get('tgWebAppData');
 
-    if (hashData) {
-      console.log('Используем данные из URL hash параметра');
-      return decodeURIComponent(hashData);
+      if (tgWebAppData) {
+        console.log('Используем данные из URL параметра tgWebAppData');
+        return decodeURIComponent(tgWebAppData);
+      }
+
+      // Проверяем hash часть (альтернативный формат)
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const hashData = hashParams.get('tgWebAppData');
+
+      if (hashData) {
+        console.log('Используем данные из URL hash параметра');
+        return decodeURIComponent(hashData);
+      }
+    } catch (error) {
+      console.error('Ошибка при получении данных из URL:', error);
     }
-  } catch (error) {
-    console.error('Ошибка при получении данных из URL:', error);
-  }
 
-  console.error('Не удалось получить initData');
-  return null;
-};
+    console.error('Не удалось получить initData');
+    return '';
+  };
 
   const checkTelegramAuth = useCallback(async () => {
-  addLog('🚀 Запуск проверки аутентификации...');
+    addLog('🚀 Запуск проверки аутентификации через новую систему...');
 
-  // Получаем данные
-  const initData = getInitDataManually();
-  setInitDataRaw(initData || '');
+    // Получаем данные
+    const initData = getInitDataManually();
+    setInitDataRaw(initData);
 
-  addLog(`📦 Получен InitData: ${initData ? `Да (${initData.length} символов)` : 'Нет'}`);
+    addLog(`📦 Получен InitData: ${initData ? `Да (${initData.length} символов)` : 'Нет'}`);
 
-  if (!initData) {
-    addLog('❌ Ошибка: Нет данных Telegram');
-    setAuthStatus('not_telegram');
-    setErrorMessage('Требуется открыть приложение через Telegram');
-    return;
-  }
+    if (!initData) {
+      addLog('❌ Ошибка: Нет данных Telegram');
+      setAuthStatus('not_telegram');
+      setErrorMessage('Требуется открыть приложение через Telegram');
+      return;
+    }
 
-  // ВАЖНО: Правильное логирование
-  addLog(`=== ДАННЫЕ ДЛЯ ОТПРАВКИ ===`);
-  addLog(`InitData строка: ${initData.substring(0, 100)}...`);
-  addLog(`Длина: ${initData.length}`);
+    // ВАЖНО: Правильное логирование
+    addLog(`=== ДАННЫЕ ДЛЯ ОТПРАВКИ ===`);
+    addLog(`InitData строка: ${initData.substring(0, 100)}...`);
+    addLog(`Длина: ${initData.length}`);
 
-  // Также выводим в console.log для отладки
-  console.log('=== DEBUG: INITDATA ===');
-  console.log('Full initData:', initData);
-  console.log('Length:', initData.length);
-  console.log('First 200 chars:', initData.substring(0, 200));
+    // Также выводим в console.log для отладки
+    console.log('=== DEBUG: INITDATA ===');
+    console.log('Full initData:', initData);
+    console.log('Length:', initData.length);
+    console.log('First 200 chars:', initData.substring(0, 200));
 
-  addLog('📤 Отправка запроса на сервер...');
-  addLog(`🔗 URL запроса: ${userApi.defaults?.baseURL || ''}/auth/verify-telegram`);
+    addLog('📤 Отправка запроса на сервер через JWT аутентификацию...');
+    addLog(`🔗 URL запроса: ${process.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/auth-jwt/telegram-auth`);
 
-  try {
-    // ВАЖНО: Проверьте КАК вызывается метод
-    // У вас должно быть: userApi.verifyTelegramInitData(initData)
-    // А не: userApi.verifyTelegramInitData()
+    try {
+      addLog('🔄 Вызов JWT API с initData...');
 
-    console.log('Проверяю userApi:', userApi);
-    console.log('Метод verifyTelegramInitData:', userApi.verifyTelegramInitData);
-    console.log('Вызываю с initData длиной:', initData.length);
+      // Вызываем новую систему аутентификации
+      await loginWithTelegram(initData);
 
-    addLog('🔄 Вызов API с initData...');
+      addLog(`✅ Запрос успешен! Пользователь аутентифицирован.`);
+      addLog(`👤 Пользователь: ${user?.first_name || user?.username || 'не найден'}`);
 
-    // ВАЖНО: Передаем initData в метод!
-    const response = await userApi.verifyTelegramInitData(initData);
-
-    addLog(`✅ Запрос успешен! Статус: ${response.status}`);
-    addLog(`👤 Пользователь: ${response.data?.user?.first_name || 'не найден'}`);
-
-    if (response.status === 200 || response.status === 201) {
-      if (response.data?.user) {
-        setUserData(response.data.user);
+      if (user) {
+        setUserData({
+          id: user.telegram_id,
+          first_name: user.first_name || '',
+          last_name: user.last_name,
+          username: user.username,
+          auth_date: Date.now(),
+          hash: ''
+        });
       }
       setAuthStatus('showing_response');
-    } else {
-      addLog(`⚠️ Неожиданный статус: ${response.status}`);
+    } catch (error: any) {
+      addLog(`❌ Ошибка аутентификации: ${error.message || error}`);
+      console.error('Telegram auth error:', error);
       setAuthStatus('error');
-      setErrorMessage(`Ошибка сервера: ${response.status}`);
+      setErrorMessage(error.message || 'Ошибка аутентификации через Telegram');
     }
-  } catch (error: any) {
-    // ... остальная обработка ошибок
-  }
-}, [addLog]);
+  }, [addLog, loginWithTelegram, user]);
 
   // useEffect
   useEffect(() => {
@@ -366,7 +363,7 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
         textAlign: 'center'
       }}>
         <div style={{ fontSize: '60px', marginBottom: '20px' }}>⚠️</div>
-        <h1 style={{ fontSize: '28px', marginBottom: '15px', color: '#dc3545' }}>
+        <h1 style={{ fontSize: '28px', marginBottom: '15px', color: authStatus === 'not_telegram' ? '#ffc107' : '#dc3545' }}>
           {authStatus === 'not_telegram' ? 'Требуется Telegram' : 'Ошибка аутентификации'}
         </h1>
         <p style={{ fontSize: '18px', marginBottom: '25px', maxWidth: '500px', color: '#495057' }}>
@@ -400,7 +397,7 @@ const TelegramAuth: React.FC<TelegramAuthProps> = ({ children }) => {
               console.log('InitData:', initData);
               console.log('Длина:', initData?.length);
               if (initData) {
-                fetch('http://localhost:8000/api/auth/verify-telegram', {
+                fetch(`${process.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/auth-jwt/telegram-auth`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ initData })
