@@ -164,6 +164,13 @@ export interface BonusTransaction {
   createdAt: string;
 }
 
+// Address types
+export interface Address {
+  id: string;
+  address: string;
+  isDefault: boolean;
+}
+
 // Business information types
 export interface BusinessInfo {
   id: number;
