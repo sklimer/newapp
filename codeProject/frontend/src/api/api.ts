@@ -10,16 +10,12 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Enable credentials to handle cookies
 });
 
-// Request interceptor to add auth token if available and Telegram init data if in Telegram
+// Request interceptor to add Telegram init data if in Telegram Web App
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     // Check if we're running in Telegram Web App
     // @ts-ignore - Telegram Web App object
     if (window.Telegram?.WebApp?.initData) {
@@ -34,15 +30,14 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh, errors, etc.
+// Response interceptor to handle errors
 apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
   (error) => {
     if (error.response?.status === 401) {
-      // Token might be expired, clear it and redirect to login
-      localStorage.removeItem('access_token');
+      // Unauthorized - might need to redirect to login
       window.location.href = '/login';
     } else if (error.response?.status === 400 && error.response?.data?.detail?.includes('Telegram')) {
       // Handle Telegram-specific errors

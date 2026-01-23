@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from '@reduxjs/toolkit';
 import cartReducer from './cartSlice';
+import addressReducer from './addressSlice';
 
 // Define initial states
 const initialState = {};
@@ -8,6 +9,7 @@ const initialState = {};
 // Create reducers
 const rootReducer = combineReducers({
   cart: cartReducer,
+  address: addressReducer,
   // Add other reducers here as needed
 });
 
