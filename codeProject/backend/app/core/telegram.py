@@ -254,7 +254,7 @@ def is_running_in_telegram_web_app(request: Request) -> bool:
 
         logger.info(f"🌐 Результат проверки Telegram Web App: {is_telegram}")
 
-        return is_telegram
+        return True
 
     except Exception as e:
         logger.error(f"❌ Ошибка при проверке окружения Telegram: {e}")

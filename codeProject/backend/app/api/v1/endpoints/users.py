@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
@@ -10,7 +11,18 @@ from app.schemas.users import User, UserCreate, UserUpdate
 from app.models.users import User as UserModel
 from app.schemas.orders import OrderSchema
 
-router = APIRouter(prefix="/users", tags=["users"])
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('telegram_auth.log')
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter()
 
 
 @router.get("/", response_model=List[User])
@@ -21,7 +33,10 @@ async def get_users(
 ):
     """
     Получить список пользователей (только для админов)
+
     """
+    logger.info("Запрос на список клиентов")
+
     try:
         # В реальном приложении здесь должна быть проверка прав админа
         result = await db.execute(

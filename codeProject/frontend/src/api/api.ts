@@ -68,8 +68,11 @@ function safeDecodeURIComponent(str: string): string {
 }
 
 export const userApi = {
+  getUsers: async () => {
+    return apiClient.get('/users');
+    },
 
-    getUserProfile: async (telegramId: number) => {
+  getUserProfile: async (telegramId: number) => {
     return apiClient.get('/profile/', {
       params: { telegram_id: telegramId }
     });
