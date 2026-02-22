@@ -33,6 +33,24 @@ const Cart = () => {
     loadCartFromServer();
   }, [dispatch, telegramId]);
 
+  // Загружаем корзину с сервера при монтировании компонента, если доступен telegramId
+  useEffect(() => {
+    const loadCartFromServer = async () => {
+      if (telegramId) {
+        try {
+          dispatch(setLoading(true));
+          await dispatch(fetchCartFromServer(telegramId)).unwrap();
+        } catch (error) {
+          console.error('Failed to load cart from server:', error);
+        } finally {
+          dispatch(setLoading(false));
+        }
+      }
+    };
+
+    loadCartFromServer();
+  }, [dispatch, telegramId]);
+
   const handleQuantityChange = async (product_id: number, newQuantity: number) => {
     if (newQuantity <= 0) {
       await handleRemoveItem(product_id);
